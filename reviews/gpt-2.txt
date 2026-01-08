@@ -1,0 +1,167 @@
+Got it. I pulled up the branch and skimmed the repo structure + the README content you pasted (it matches what’s on GitHub). ([GitHub][1])
+
+You’re at the exact point where projects either become a real research tool… or they become a well-written shrine to “vibes-based spectral methods.” So here are the **next steps that actually move the needle**, in the right order.
+
+---
+
+# Next steps to focus on (highest leverage first)
+
+## 1) Implement “Phase 4: Actual Riemann zeros” **now**, not “future”
+
+Your own README still says you’re *not computing actual zeros* yet. ([GitHub][1])
+That’s the single biggest remaining credibility gap.
+
+### What to build (minimum viable)
+
+* Add a new CLI command: `riemann-solver zeta-zeros`
+* Start with **Odlyzko tables** (fastest, most reproducible)
+
+  * You already have `FUTURE_ODLYZKO_DATABASE.md` sitting there, so clearly you know this is coming. ([GitHub][1])
+* Implement proper **unfolding**:
+
+  * Map heights (\gamma_n) → unfolded levels using the Riemann–von Mangoldt counting function (N(T))
+  * Then compute spacing stats with your existing analyzer
+
+### Acceptance criteria
+
+* You can run:
+
+  * `riemann-solver zeta-zeros --source odlyzko --count 100000`
+* And it produces:
+
+  * spacing histogram
+  * variance
+  * KS distance vs Wigner surmise (or exact GUE spacing)
+
+**Why this is #1:** It’s the bridge between “toy systems” and “actual RH-adjacent evidence.”
+
+---
+
+## 2) Replace your “95.46% match confidence” with standard statistical tests
+
+Right now “match confidence” is a homemade metric. That’s fine internally, but externally it reads like “trust me bro.” Your README explicitly cites it as a key result. ([GitHub][1])
+
+### Add these to `analysis/`
+
+* **KS test** comparing empirical CDF of spacings to Wigner surmise CDF
+* **Anderson–Darling** (optional but nicer for tails)
+* Report confidence intervals via bootstrap
+
+### Acceptance criteria
+
+* Your GUE command prints something like:
+
+  * `KS statistic: ...`
+  * `p-value: ...` (or note limitations if approximated)
+  * `variance ± stderr`
+* Same tests apply to zeta zeros later.
+
+---
+
+## 3) Fill `analysis/spectral.rs`: add spectral rigidity metrics
+
+You already have `analysis/spectral.rs` labeled “future.” ([GitHub][1])
+Time to stop teasing.
+
+### Implement
+
+* Number variance (\Sigma^2(L))
+* Dyson–Mehta (\Delta_3(L))
+
+### Why this matters
+
+Nearest-neighbor spacing is the beginner test.
+Rigidity is where the “Riemann zeros behave like GUE” story becomes hard to shrug off.
+
+---
+
+## 4) Born oscillator Phase 2B: implement **only Σ₁(E)** first
+
+Your README calls out the hierarchy and says you’ll do Σ₁, Σ₂, … to (\hbar^{11}). ([GitHub][1])
+If you aim for (\hbar^{11}) next, you’ll drown in algebra and stop shipping.
+
+### Build
+
+* `--order 0|1` flag:
+
+  * `0`: Σ₀ only
+  * `1`: Σ₀ + Σ₁
+* Validate against Giordano–Negro–Tateo numerical benchmarks.
+
+### Acceptance criteria
+
+* You can reproduce a table of (E_n) values from the paper within tolerance.
+* You can show improvement from Σ₀-only → Σ₁.
+
+---
+
+## 5) Make the README claims slightly more bulletproof
+
+Not a huge code change, but it will prevent predictable arguments.
+
+### Two easy edits
+
+1. This line is backwards:
+
+> “Establish that random matrix eigenvalues match Riemann zero statistics”
+
+The standard statement is:
+
+> “Riemann zero spacings match GUE statistics” (Montgomery–Odlyzko)
+
+2. Your “Entropy → 0” philosophy reads like motivational poster math.
+   It’s fine as a personal dev philosophy, but it doesn’t belong in a research-facing README at the same priority level as the system descriptions. Keep it, but move it down or tighten it.
+
+(Yes, I know, humans love metaphors. But reviewers love precision.)
+
+---
+
+## 6) Add a reproducibility/report artifact format
+
+Once you start generating real-zero comparisons, you need clean output.
+
+### Add
+
+* `--out results.json` for every command
+* Standard schema:
+
+  * parameters (N, sample count, lambda, hbar)
+  * eigenvalues (optional)
+  * unfolded spacings
+  * variance / KS / Δ₃ curves
+
+### Why
+
+This will let you generate plots and comparisons automatically without hand-editing markdown every time.
+
+---
+
+# If you’re picking “next sprint goals” (tight scope)
+
+Here’s the crisp order:
+
+1. **Odlyzko loader + unfolding + spacing tests** (new `zeta-zeros` command)
+2. **KS test + bootstrap CI** for variance/metrics (upgrade `verify-gue` too)
+3. **Spectral rigidity metrics** in `analysis/spectral.rs`
+4. **Born Σ₁(E)** corrections + benchmark validation
+
+Everything else is optional until those are done.
+
+---
+
+# One extra thing (because you’ll hit it immediately)
+
+Your repo’s top-level has `data/` already. ([GitHub][1])
+Use that as the canonical place for:
+
+* Odlyzko tables
+* cached computed zeros (if you add computation later)
+* benchmark result snapshots
+
+Don’t scatter them across docs. Your future self will be extremely annoying about it.
+
+---
+
+That’s the path. Do the zeros + unfolding next. Until then, you’ve built three excellent machines that convincingly demonstrate… that you built three machines.
+
+[1]: https://github.com/zacharyelston/RiemannHypothesis/tree/feature/baseline-corpus "GitHub - zacharyelston/RiemannHypothesis at feature/baseline-corpus"

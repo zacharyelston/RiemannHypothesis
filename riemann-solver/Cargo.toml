@@ -3,8 +3,45 @@ name = "riemann-solver"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "riemann_solver"
+path = "src/lib.rs"
+
+[[bin]]
+name = "riemann-solver"
+path = "src/main.rs"
+
+[[bin]]
+name = "rigidity_scan"
+path = "src/bin/rigidity_scan.rs"
+
+[[bin]]
+name = "model_rigidity"
+path = "src/bin/model_rigidity.rs"
+
+[[bin]]
+name = "compare_rigidity"
+path = "src/bin/compare_rigidity.rs"
+
 [dependencies]
-rand = "0.8"
-rand_distr = "0.4"
-nalgebra = "0.32"
-statrs = "0.16"
+nalgebra = "0.32"        # Linear Algebra
+rand = "0.8"             # RNG
+rand_distr = "0.4"       # Distributions (Normal, etc.)
+statrs = "0.16"          # Stats helpers
+clap = { version = "4.4", features = ["derive"] } # CLI
+serde = { version = "1.0", features = ["derive"] } # Config
+serde_json = "1.0"       # JSON serialization
+chrono = { version = "0.4", features = ["serde"] } # Timestamps
+thiserror = "1.0"        # Error defining
+anyhow = "1.0"           # Error handling
+tracing = "0.1"          # Logging
+tracing-subscriber = "0.3"
+cudarc = { version = "0.18.2", features = ["driver", "nvrtc", "cuda-12000"], optional = true }
+rayon = "1.7"            # Data parallelism
+log = "0.4"              # Logging
+indicatif = "0.17"       # Progress bars
+sysinfo = "0.30"         # System info
+
+[features]
+default = ["gpu"]
+gpu = ["cudarc"]
