@@ -14,3 +14,4 @@ pub trait QuantumSystem {
 
 pub mod gue;
 pub mod berry_keating;
+pub mod born_oscillator;
