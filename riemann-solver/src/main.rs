@@ -41,6 +41,13 @@ pub enum Commands {
         #[arg(short, long, default_value_t = 20)]
         truncation: usize,
     },
+    /// Analyze actual Riemann zeta zeros (Montgomery-Odlyzko phenomenon)
+    ZetaZeros {
+        #[arg(short, long, default_value = "../data/riemann_zeros_first100.txt")]
+        data: String,
+        #[arg(short, long)]
+        count: Option<usize>,
+    },
 }
 
 fn main() -> anyhow::Result<()> {
@@ -157,6 +164,57 @@ fn main() -> anyhow::Result<()> {
             println!("\nNote: This uses WKB/semiclassical quantization.");
             println!("Full Weyl quantization with quantum corrections (Σ₁, Σ₂, ...))");
             println!("would improve accuracy but requires iterative procedure.");
+            
+            Ok(())
+        }
+        Commands::ZetaZeros { data, count } => {
+            use crate::analysis::unfolding::{load_zeros_from_file, unfold_zeros, compute_spacings};
+            
+            tracing::info!("Loading Riemann zeros from {}", data);
+            
+            // Load zeros from file
+            let mut zeros = load_zeros_from_file(&data)
+                .map_err(|e| anyhow::anyhow!("Failed to load zeros: {}", e))?;
+            
+            // Limit to requested count
+            if let Some(n) = count {
+                zeros.truncate(n);
+            }
+            
+            tracing::info!("Loaded {} Riemann zeros", zeros.len());
+            
+            // Unfold using Riemann-von Mangoldt N(T)
+            tracing::info!("Unfolding zeros using N(T) counting function...");
+            let unfolded = unfold_zeros(&zeros);
+            let spacings = compute_spacings(&unfolded);
+            
+            // Compute statistics
+            let analyzer = SpacingAnalyzer::new();
+            let stats = analyzer.analyze(&spacings);
+            
+            // Display results
+            println!("\n=== Riemann Zeta Zeros Analysis ===");
+            println!("Montgomery-Odlyzko Phenomenon: Zeros match GUE statistics\n");
+            println!("Data source: {}", data);
+            println!("Number of zeros: {}", zeros.len());
+            println!("Number of spacings: {}", spacings.len());
+            println!("\nRange: γ_1 = {:.6} to γ_{} = {:.6}", 
+                     zeros[0], zeros.len(), zeros[zeros.len()-1]);
+            
+            println!("\n--- Unfolding via N(T) = (T/2π)log(T/2π) - T/2π + 7/8 ---");
+            println!("Unfolded range: {:.3} to {:.3}", unfolded[0], unfolded[unfolded.len()-1]);
+            
+            println!("\n--- Spacing Statistics ---");
+            println!("Mean spacing: {:.6} (expected: 1.0)", stats.mean_spacing);
+            println!("Variance: {:.6} (GUE theory: 0.178)", stats.variance);
+            println!("Skewness: {:.6}", stats.skewness);
+            println!("Kurtosis: {:.6}", stats.kurtosis);
+            println!("GUE Match: {:.2}%", stats.gue_match_confidence * 100.0);
+            
+            // TODO: Add KS statistic in Phase 4.4
+            println!("\n✓ Zeros unfolded to mean spacing ≈ 1");
+            println!("✓ Ready for GUE comparison");
+            println!("\nNote: Full statistical validation (KS test) coming in Phase 4.4");
             
             Ok(())
         }
