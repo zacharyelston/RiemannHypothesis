@@ -1,94 +1,94 @@
-use nalgebra::DMatrix;
-use rand::thread_rng;
-use rand_distr::{Normal, Distribution};
-use std::f64::consts::PI;
+use clap::{Parser, Subcommand};
+mod config;
+mod hamiltonian;
+mod solver;
+mod analysis;
+mod utils;
 
-fn main() {
-    let n = 300; // Reduced size for faster execution
-    println!("Scientific Process Step 4: Empirical Verification");
-    println!("Generating Random Hermitian Matrix (GUE) of size {}x{}...", n, n);
+use config::SimulationConfig;
+use hamiltonian::{QuantumSystem, gue::GueSystem};
+use solver::{EigenSolver, lapack::LapackSolver};
+use analysis::{SpectrumAnalyzer, spacing::SpacingAnalyzer};
 
-    let eigenvalues = generate_gue_eigenvalues(n);
-    let spacings = compute_normalized_spacings(&eigenvalues);
-    
-    analyze_spacings(&spacings);
+#[derive(Parser)]
+#[command(name = "riemann-solver")]
+#[command(about = "A scientific solver for the Riemann Hypothesis using spectral geometry")]
+pub struct Cli {
+    #[command(subcommand)]
+    pub command: Commands,
 }
 
-fn generate_gue_eigenvalues(n: usize) -> Vec<f64> {
-    let mut rng = thread_rng();
-    let normal = Normal::new(0.0, 1.0 / (2.0 * n as f64).sqrt()).unwrap();
+#[derive(Subcommand)]
+pub enum Commands {
+    /// Run baseline GUE verification
+    VerifyGue {
+        #[arg(short, long, default_value_t = 300)]
+        size: usize,
+        #[arg(short, long, default_value_t = 1)]
+        iterations: usize,
+        #[arg(short, long)]
+        seed: Option<u64>,
+    },
+    /// Run Berry-Keating simulation (Future)
+    SimulateBk {
+        #[arg(short, long, default_value_t = 50.0)]
+        cutoff: f64,
+    },
+}
 
-    let mut re_parts = DMatrix::from_fn(n, n, |_, _| normal.sample(&mut rng));
-    let mut im_parts = DMatrix::from_fn(n, n, |_, _| normal.sample(&mut rng));
+fn main() -> anyhow::Result<()> {
+    tracing_subscriber::fmt::init();
 
-    for i in 0..n {
-        for j in 0..i {
-            let re = (re_parts[(i, j)] + re_parts[(j, i)]) / 2.0_f64.sqrt();
-            let im = (im_parts[(i, j)] - im_parts[(j, i)]) / 2.0_f64.sqrt();
+    let cli = Cli::parse();
+
+    match cli.command {
+        Commands::VerifyGue { size, iterations, seed } => {
+            let config = SimulationConfig {
+                matrix_size: size,
+                iterations,
+                seed,
+            };
+            tracing::info!("Starting GUE verification with config: {:?}", config);
             
-            re_parts[(i, j)] = re;
-            re_parts[(j, i)] = re;
-            im_parts[(i, j)] = im;
-            im_parts[(j, i)] = -im;
+            // Create GUE system
+            let gue = GueSystem::new(config.matrix_size, config.seed)?;
+            tracing::info!("Generating {}x{} Hermitian matrix...", gue.size(), gue.size());
+            
+            // Generate Hamiltonian
+            let hamiltonian = gue.generate_hamiltonian()?;
+            
+            // Solve for eigenvalues
+            tracing::info!("Computing eigenvalues...");
+            let solver = LapackSolver::new();
+            let eigenvalues = solver.solve(&hamiltonian)?;
+            
+            // Analyze spectrum
+            tracing::info!("Analyzing spectrum...");
+            let analyzer = SpacingAnalyzer::new();
+            let unfolded = analyzer.unfold_spectrum(&eigenvalues);
+            let stats = analyzer.analyze(&unfolded);
+            
+            // Display results
+            println!("\n=== Analysis Results ===");
+            println!("Number of spacings: {}", unfolded.len());
+            println!("Mean spacing: {:.4} (Theory: 1.0)", stats.mean_spacing);
+            println!("Variance: {:.4} (Theory GUE: ~0.178, Poisson: 1.0)", stats.variance);
+            println!("Skewness: {:.4}", stats.skewness);
+            println!("Kurtosis: {:.4}", stats.kurtosis);
+            println!("GUE Match Confidence: {:.2}%", stats.gue_match_confidence * 100.0);
+            
+            if stats.gue_match_confidence > 0.8 {
+                println!("\n✓ CONCLUSION: Matches GUE statistics (Quantum Chaos / Riemann Zeros)");
+            } else {
+                println!("\n✗ CONCLUSION: Deviates from GUE (Variance={:.4})", stats.variance);
+            }
+            
+            Ok(())
         }
-        re_parts[(i, i)] = normal.sample(&mut rng);
-        im_parts[(i, i)] = 0.0;
-    }
-
-    let mut big_mat = DMatrix::zeros(2 * n, 2 * n);
-    for i in 0..n {
-        for j in 0..n {
-            big_mat[(i, j)] = re_parts[(i, j)];
-            big_mat[(i + n, j + n)] = re_parts[(i, j)];
-            big_mat[(i + n, j)] = im_parts[(i, j)];
-            big_mat[(i, j + n)] = -im_parts[(i, j)];
+        Commands::SimulateBk { cutoff } => {
+            tracing::info!("Berry-Keating simulation not yet implemented. Cutoff: {}", cutoff);
+            println!("Berry-Keating Hamiltonian simulation is planned for future implementation.");
+            Ok(())
         }
-    }
-
-    println!("Computing eigenvalues...");
-    let eig = big_mat.symmetric_eigen();
-    let mut evs = eig.eigenvalues.as_slice().to_vec();
-    
-    evs.sort_by(|a, b| a.partial_cmp(b).unwrap());
-    let distinct_evs: Vec<f64> = evs.iter().step_by(2).cloned().collect();
-    
-    distinct_evs
-}
-
-fn compute_normalized_spacings(eigenvalues: &[f64]) -> Vec<f64> {
-    let center_evs: Vec<f64> = eigenvalues.iter()
-        .filter(|&&x| x.abs() < 1.0)
-        .cloned()
-        .collect();
-        
-    let mut spacings = Vec::new();
-    for i in 0..center_evs.len()-1 {
-        let diff = center_evs[i+1] - center_evs[i];
-        spacings.push(diff);
-    }
-    
-    if spacings.is_empty() { return vec![]; }
-    
-    let mean_spacing = spacings.iter().sum::<f64>() / spacings.len() as f64;
-    spacings.iter().map(|s| s / mean_spacing).collect()
-}
-
-fn analyze_spacings(spacings: &[f64]) {
-    if spacings.is_empty() {
-        println!("Not enough data.");
-        return;
-    }
-    let mean = spacings.iter().sum::<f64>() / spacings.len() as f64;
-    let variance = spacings.iter().map(|s| (s - mean).powi(2)).sum::<f64>() / spacings.len() as f64;
-    
-    println!("Analysis Results:");
-    println!("  Number of spacings: {}", spacings.len());
-    println!("  Mean spacing: {:.4} (Theory: 1.0)", mean);
-    println!("  Variance: {:.4} (Theory GUE: ~0.178, Poisson: 1.0)", variance);
-    
-    if (variance - 0.178).abs() < 0.15 {
-        println!("  CONCLUSION: Matches GUE statistics (Quantum Chaos / Riemann Zeros)");
-    } else {
-        println!("  CONCLUSION: Deviates from GUE (Variance={:.4})", variance);
     }
 }
