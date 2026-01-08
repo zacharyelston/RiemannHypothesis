@@ -1,4 +1,4 @@
-use nalgebra::{DMatrix, Complex, ComplexField};
+use nalgebra::{DMatrix, Complex};
 use rand::thread_rng;
 use rand_distr::{Normal, Distribution};
 use crate::hamiltonian::QuantumSystem;

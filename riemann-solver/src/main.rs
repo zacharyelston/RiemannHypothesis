@@ -5,12 +5,14 @@ mod solver;
 mod utils;
 mod analysis;
 mod output;
+mod gpu;
 
 use config::SimulationConfig;
 use hamiltonian::{QuantumSystem, gue::GueSystem, berry_keating::BerryKeatingSystem, born_oscillator::BornOscillator};
 use solver::{EigenSolver, lapack::LapackSolver};
 use analysis::{SpectrumAnalyzer, spacing::SpacingAnalyzer};
 use output::*;
+use gpu::GpuBatchProcessor;
 
 #[derive(Parser)]
 #[command(name = "riemann-solver")]
@@ -59,6 +61,41 @@ pub enum Commands {
         count: Option<usize>,
         #[arg(short, long)]
         out: Option<String>,
+    },
+    /// GPU-accelerated batch GUE verification
+    GpuVerifyGue {
+        #[arg(short, long, default_value_t = 300)]
+        size: usize,
+        #[arg(short, long, default_value_t = 10)]
+        batch_count: usize,
+        #[arg(short, long, default_value_t = 128)]
+        batch_size: usize,
+        #[arg(short, long)]
+        seed: Option<u64>,
+    },
+    /// GPU-accelerated parameter sweep for spectral systems
+    GpuParameterSweep {
+        #[arg(short, long, default_value = "gue")]
+        system: String,
+        #[arg(short, long, default_value_t = 100)]
+        min_size: usize,
+        #[arg(short, long, default_value_t = 500)]
+        max_size: usize,
+        #[arg(short, long, default_value_t = 5)]
+        step: usize,
+        #[arg(short, long, default_value_t = 128)]
+        batch_size: usize,
+    },
+    /// GPU-accelerated spectral analysis with rigidity metrics
+    GpuSpectralAnalysis {
+        #[arg(short, long, default_value = "gue")]
+        system: String,
+        #[arg(short, long, default_value_t = 500)]
+        size: usize,
+        #[arg(short, long, default_value_t = 128)]
+        batch_size: usize,
+        #[arg(short, long)]
+        output: Option<String>,
     },
 }
 
@@ -412,6 +449,200 @@ fn main() -> anyhow::Result<()> {
                 write_json(&result, &path)?;
                 println!("\n✓ Results written to {}", path);
             }
+            
+            Ok(())
+        }
+        Commands::GpuVerifyGue { size, batch_count, batch_size, seed } => {
+            tracing::info!("Starting GPU-accelerated GUE verification");
+            tracing::info!("Matrix size: {}x{}, Batch count: {}, Batch size: {}", size, size, batch_count, batch_size);
+            
+            let gpu_processor = GpuBatchProcessor::new(batch_size)?;
+            
+            if !gpu_processor.is_gpu_enabled() {
+                tracing::warn!("GPU not available, falling back to CPU");
+            }
+            
+            println!("\n=== GPU-Accelerated GUE Verification ===");
+            println!("Matrix size: {}x{}", size, size);
+            println!("Batch count: {}", batch_count);
+            println!("Batch size: {}", batch_size);
+            println!("GPU enabled: {}", gpu_processor.is_gpu_enabled());
+            println!("\nGenerating and solving {} batches...\n", batch_count);
+            
+            let mut all_spacings = Vec::new();
+            let mut all_stats = Vec::new();
+            
+            for batch_idx in 0..batch_count {
+                tracing::info!("Processing batch {}/{}", batch_idx + 1, batch_count);
+                
+                let mut matrices = Vec::new();
+                for _ in 0..batch_size {
+                    let gue = GueSystem::new(size, seed)?;
+                    let hamiltonian = gue.generate_hamiltonian()?;
+                    matrices.push(hamiltonian);
+                }
+                
+                let eigenvalue_sets = gpu_processor.process_batch(matrices)?;
+                
+                for eigenvalues in eigenvalue_sets {
+                    let analyzer = SpacingAnalyzer::new();
+                    let unfolded = analyzer.unfold_spectrum(&eigenvalues);
+                    let stats = analyzer.analyze(&unfolded);
+                    all_spacings.extend(unfolded);
+                    all_stats.push(stats);
+                }
+            }
+            
+            let analyzer = SpacingAnalyzer::new();
+            let combined_stats = analyzer.analyze(&all_spacings);
+            
+            use crate::analysis::ks_test::ks_test_wigner;
+            let (ks_d, ks_p) = ks_test_wigner(&all_spacings);
+            
+            println!("--- Aggregated Statistics ---");
+            println!("Total matrices processed: {}", batch_count * batch_size);
+            println!("Total spacings: {}", all_spacings.len());
+            println!("Mean spacing: {:.6} (expected: 1.0)", combined_stats.mean_spacing);
+            println!("Variance: {:.4} (GUE theory: 0.178)", combined_stats.variance);
+            println!("Skewness: {:.4}", combined_stats.skewness);
+            println!("Kurtosis: {:.4}", combined_stats.kurtosis);
+            
+            println!("\n--- Kolmogorov-Smirnov Test ---");
+            println!("KS statistic D: {:.6}", ks_d);
+            println!("p-value: {:.6}", ks_p);
+            if ks_p > 0.05 {
+                println!("✓ PASS: Cannot reject GUE hypothesis");
+            } else {
+                println!("⚠ MARGINAL: Weak evidence against GUE");
+            }
+            
+            println!("\n✓ GPU-accelerated batch processing complete");
+            
+            Ok(())
+        }
+        Commands::GpuParameterSweep { system, min_size, max_size, step, batch_size } => {
+            tracing::info!("Starting GPU-accelerated parameter sweep");
+            tracing::info!("System: {}, Size range: {} to {}, Step: {}", system, min_size, max_size, step);
+            
+            let gpu_processor = GpuBatchProcessor::new(batch_size)?;
+            
+            println!("\n=== GPU-Accelerated Parameter Sweep ===");
+            println!("System: {}", system);
+            println!("Size range: {} to {}", min_size, max_size);
+            println!("Step: {}", step);
+            println!("Batch size: {}", batch_size);
+            println!("GPU enabled: {}\n", gpu_processor.is_gpu_enabled());
+            
+            println!("Size\tVariance\tMean\tKS-D\tKS-p");
+            println!("----\t--------\t----\t----\t----");
+            
+            let mut size = min_size;
+            while size <= max_size {
+                let mut matrices = Vec::new();
+                for _ in 0..batch_size {
+                    let gue = GueSystem::new(size, None)?;
+                    let hamiltonian = gue.generate_hamiltonian()?;
+                    matrices.push(hamiltonian);
+                }
+                
+                let eigenvalue_sets = gpu_processor.process_batch(matrices)?;
+                let mut all_spacings = Vec::new();
+                
+                for eigenvalues in eigenvalue_sets {
+                    let analyzer = SpacingAnalyzer::new();
+                    let unfolded = analyzer.unfold_spectrum(&eigenvalues);
+                    all_spacings.extend(unfolded);
+                }
+                
+                let analyzer = SpacingAnalyzer::new();
+                let stats = analyzer.analyze(&all_spacings);
+                
+                use crate::analysis::ks_test::ks_test_wigner;
+                let (ks_d, ks_p) = ks_test_wigner(&all_spacings);
+                
+                println!("{}\t{:.4}\t{:.4}\t{:.4}\t{:.4}", size, stats.variance, stats.mean_spacing, ks_d, ks_p);
+                
+                size += step;
+            }
+            
+            println!("\n✓ Parameter sweep complete");
+            
+            Ok(())
+        }
+        Commands::GpuSpectralAnalysis { system, size, batch_size, output } => {
+            tracing::info!("Starting GPU-accelerated spectral analysis");
+            tracing::info!("System: {}, Size: {}, Batch size: {}", system, size, batch_size);
+            
+            let gpu_processor = GpuBatchProcessor::new(batch_size)?;
+            
+            println!("\n=== GPU-Accelerated Spectral Analysis ===");
+            println!("System: {}", system);
+            println!("Matrix size: {}x{}", size, size);
+            println!("Batch size: {}", batch_size);
+            println!("GPU enabled: {}\n", gpu_processor.is_gpu_enabled());
+            
+            let mut matrices = Vec::new();
+            for _ in 0..batch_size {
+                let gue = GueSystem::new(size, None)?;
+                let hamiltonian = gue.generate_hamiltonian()?;
+                matrices.push(hamiltonian);
+            }
+            
+            tracing::info!("Processing {} matrices...", matrices.len());
+            let eigenvalue_sets = gpu_processor.process_batch(matrices)?;
+            
+            let mut all_eigenvalues = Vec::new();
+            let mut all_spacings = Vec::new();
+            
+            for eigenvalues in eigenvalue_sets {
+                let analyzer = SpacingAnalyzer::new();
+                let unfolded = analyzer.unfold_spectrum(&eigenvalues);
+                all_spacings.extend(unfolded.clone());
+                all_eigenvalues.extend(eigenvalues);
+            }
+            
+            let analyzer = SpacingAnalyzer::new();
+            let stats = analyzer.analyze(&all_spacings);
+            
+            use crate::analysis::ks_test::ks_test_wigner;
+            let (ks_d, ks_p) = ks_test_wigner(&all_spacings);
+            
+            use crate::gpu::gpu_kernels::GpuKernels;
+            let kernels = GpuKernels::new();
+            
+            let window_sizes = vec![5.0, 10.0, 20.0];
+            let number_var = kernels.compute_number_variance(&all_eigenvalues, &window_sizes);
+            let delta3_vals = kernels.compute_delta3(&all_eigenvalues, &window_sizes);
+            
+            println!("--- Spacing Statistics ---");
+            println!("Total spacings: {}", all_spacings.len());
+            println!("Mean spacing: {:.6}", stats.mean_spacing);
+            println!("Variance: {:.6}", stats.variance);
+            println!("Skewness: {:.6}", stats.skewness);
+            println!("Kurtosis: {:.6}", stats.kurtosis);
+            
+            println!("\n--- Kolmogorov-Smirnov Test ---");
+            println!("KS statistic D: {:.6}", ks_d);
+            println!("p-value: {:.6}", ks_p);
+            
+            println!("\n--- Spectral Rigidity ---");
+            for (i, &L) in window_sizes.iter().enumerate() {
+                println!("L={}: Σ²(L)={:.6}, Δ₃(L)={:.6}", L, number_var[i], delta3_vals[i]);
+            }
+            
+            if let Some(output_file) = output {
+                use std::fs::File;
+                use std::io::Write;
+                
+                let mut file = File::create(&output_file)?;
+                writeln!(file, "size,variance,mean,ks_d,ks_p")?;
+                writeln!(file, "{},{:.6},{:.6},{:.6},{:.6}", size, stats.variance, stats.mean_spacing, ks_d, ks_p)?;
+                
+                tracing::info!("Results written to {}", output_file);
+                println!("\n✓ Results saved to {}", output_file);
+            }
+            
+            println!("\n✓ GPU-accelerated spectral analysis complete");
             
             Ok(())
         }
