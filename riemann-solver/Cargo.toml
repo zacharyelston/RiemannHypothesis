@@ -23,6 +23,10 @@ path = "src/bin/model_rigidity.rs"
 name = "compare_rigidity"
 path = "src/bin/compare_rigidity.rs"
 
+[[bin]]
+name = "energy_bin_rigidity"
+path = "src/bin/energy_bin_rigidity.rs"
+
 [dependencies]
 nalgebra = "0.32"        # Linear Algebra
 rand = "0.8"             # RNG
