@@ -1,4 +1,4 @@
-use nalgebra::{DMatrix, Complex};
+use nalgebra::{DMatrix, Complex, ComplexField};
 use rand::thread_rng;
 use rand_distr::{Normal, Distribution};
 use crate::hamiltonian::QuantumSystem;
@@ -73,7 +73,7 @@ mod tests {
         // Check Hermiticity: H = H†
         for i in 0..5 {
             for j in 0..5 {
-                let diff = (h[(i, j)] - h[(j, i)].conj()).norm();
+                let diff = (h[(i, j)] - h[(j, i)].conj()).modulus();
                 assert!(diff < 1e-10, "Matrix not Hermitian at ({}, {})", i, j);
             }
         }
