@@ -46,20 +46,49 @@ impl GpuKernels {
         eigenvalues: &[f64],
         window_sizes: &[f64],
     ) -> Vec<f64> {
+        // CRITICAL FIX: Unfold eigenvalues before computing variance
+        // Previous implementation used raw eigenvalues, causing 7M× error
+        
         let mut sorted = eigenvalues.to_vec();
         sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
+        // Step 1: Compute spacings
+        let mut spacings = Vec::new();
+        for i in 0..sorted.len() - 1 {
+            let spacing = sorted[i + 1] - sorted[i];
+            if spacing > 0.0 {
+                spacings.push(spacing);
+            }
+        }
+
+        if spacings.is_empty() {
+            return vec![0.0; window_sizes.len()];
+        }
+
+        // Step 2: Normalize spacings to mean = 1.0
+        let mean_spacing = spacings.iter().sum::<f64>() / spacings.len() as f64;
+        let normalized_spacings: Vec<f64> = spacings.iter().map(|s| s / mean_spacing).collect();
+
+        // Step 3: Compute unfolded levels (cumulative sum)
+        let mut unfolded = vec![0.0];
+        let mut cumsum = 0.0;
+        for &s in &normalized_spacings {
+            cumsum += s;
+            unfolded.push(cumsum);
+        }
+
+        // Step 4: Compute Σ²(L) on unfolded levels
         window_sizes
             .iter()
             .map(|&L| {
                 let mut variance_sum = 0.0;
                 let mut count = 0;
 
-                for i in 0..sorted.len() {
-                    let window_start = sorted[i];
+                for i in 0..unfolded.len() {
+                    let window_start = unfolded[i];
                     let window_end = window_start + L;
 
-                    let count_in_window = sorted
+                    let count_in_window = unfolded
                         .iter()
                         .filter(|&&x| x >= window_start && x < window_end)
                         .count() as f64;
@@ -83,16 +112,45 @@ impl GpuKernels {
         eigenvalues: &[f64],
         window_sizes: &[f64],
     ) -> Vec<f64> {
+        // CRITICAL FIX: Unfold eigenvalues before computing delta3
+        // Previous implementation used raw eigenvalues, causing 7M× error
+        
         let mut sorted = eigenvalues.to_vec();
         sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
+        // Step 1: Compute spacings
+        let mut spacings = Vec::new();
+        for i in 0..sorted.len() - 1 {
+            let spacing = sorted[i + 1] - sorted[i];
+            if spacing > 0.0 {
+                spacings.push(spacing);
+            }
+        }
+
+        if spacings.is_empty() {
+            return vec![0.0; window_sizes.len()];
+        }
+
+        // Step 2: Normalize spacings to mean = 1.0
+        let mean_spacing = spacings.iter().sum::<f64>() / spacings.len() as f64;
+        let normalized_spacings: Vec<f64> = spacings.iter().map(|s| s / mean_spacing).collect();
+
+        // Step 3: Compute unfolded levels (cumulative sum)
+        let mut unfolded = vec![0.0];
+        let mut cumsum = 0.0;
+        for &s in &normalized_spacings {
+            cumsum += s;
+            unfolded.push(cumsum);
+        }
+
+        // Step 4: Compute Δ₃(L) on unfolded levels
         window_sizes
             .iter()
             .map(|&L| {
                 let mut min_deviation = f64::INFINITY;
 
-                for start_idx in 0..sorted.len() {
-                    let window_start = sorted[start_idx];
+                for start_idx in 0..unfolded.len() {
+                    let window_start = unfolded[start_idx];
                     let window_end = window_start + L;
 
                     let mut sum_x = 0.0;
@@ -100,7 +158,7 @@ impl GpuKernels {
                     let mut sum_n = 0.0;
                     let mut count = 0;
 
-                    for (i, &x) in sorted.iter().enumerate() {
+                    for (i, &x) in unfolded.iter().enumerate() {
                         if x >= window_start && x < window_end {
                             sum_x += x;
                             sum_x2 += x * x;
@@ -122,7 +180,7 @@ impl GpuKernels {
                         let intercept = n_mean - slope * x_mean;
 
                         let mut deviation_sum = 0.0;
-                        for (i, &x) in sorted.iter().enumerate() {
+                        for (i, &x) in unfolded.iter().enumerate() {
                             if x >= window_start && x < window_end {
                                 let predicted = slope * x + intercept;
                                 let actual = i as f64;
@@ -135,7 +193,11 @@ impl GpuKernels {
                     }
                 }
 
-                min_deviation
+                if min_deviation.is_infinite() {
+                    0.0
+                } else {
+                    min_deviation
+                }
             })
             .collect()
     }

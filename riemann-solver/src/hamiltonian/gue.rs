@@ -67,6 +67,7 @@ mod tests {
 
     #[test]
     fn test_hermiticity() {
+        use nalgebra::ComplexField;
         let gue = GueSystem::new(5, Some(42)).unwrap();
         let h = gue.generate_hamiltonian().unwrap();
         
