@@ -2,6 +2,7 @@ use nalgebra::{DMatrix, Complex};
 use crate::utils::RiemannError;
 
 pub mod lapack;
+pub mod gpu_solver;
 
 /// Trait for eigenvalue solvers.
 pub trait EigenSolver {
