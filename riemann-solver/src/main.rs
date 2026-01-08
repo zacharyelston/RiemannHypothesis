@@ -6,7 +6,7 @@ mod analysis;
 mod utils;
 
 use config::SimulationConfig;
-use hamiltonian::{QuantumSystem, gue::GueSystem, berry_keating::BerryKeatingSystem};
+use hamiltonian::{QuantumSystem, gue::GueSystem, berry_keating::BerryKeatingSystem, born_oscillator::BornOscillator};
 use solver::{EigenSolver, lapack::LapackSolver};
 use analysis::{SpectrumAnalyzer, spacing::SpacingAnalyzer};
 
@@ -32,6 +32,13 @@ pub enum Commands {
     /// Run Berry-Keating truncated Hamiltonian (Srednicki 2011)
     BerryKeating {
         #[arg(short, long, default_value_t = 50)]
+        truncation: usize,
+    },
+    /// Run Born oscillator with WKB quantization (Giordano et al. 2023)
+    BornOscillator {
+        #[arg(short, long, default_value_t = 1.0)]
+        lambda: f64,
+        #[arg(short, long, default_value_t = 20)]
         truncation: usize,
     },
 }
@@ -117,6 +124,39 @@ fn main() -> anyhow::Result<()> {
             println!("\nNote: These are NOT the actual Riemann zeros, but zeros of");
             println!("the modified gamma factor Γ_{{∞,N}}(s) which satisfy the");
             println!("local Riemann hypothesis (Srednicki 2011, arXiv:1104.1850)");
+            
+            Ok(())
+        }
+        Commands::BornOscillator { lambda, truncation } => {
+            tracing::info!("Running Born oscillator with λ={}, N={}", lambda, truncation);
+            
+            // Create Born oscillator system
+            let bo = BornOscillator::new(lambda, truncation)?;
+            tracing::info!("Computing eigenvalues via semiclassical (WKB) quantization...");
+            
+            // Compute eigenvalues using WKB approximation
+            let hbar = 1.0;
+            let eigenvalues = bo.compute_eigenvalues_wkb(hbar)?;
+            
+            // Display results
+            println!("\n=== Born Oscillator - Semiclassical Quantization ===");
+            println!("Based on Giordano et al. (2023) arXiv:2307.15025v2");
+            println!("\nParameters:");
+            println!("  λ (deformation): {}", lambda);
+            println!("  Truncation N: {}", truncation);
+            println!("  ℏ: {}", hbar);
+            println!("\nClassical Hamiltonian: H = √(1 + λp²) √(1 + λq²)");
+            println!("\nEigenvalues from WKB quantization (n + 1/2 = Σ₀(E)/ℏ):\n");
+            
+            for (i, &energy) in eigenvalues.iter().enumerate() {
+                println!("  E_{:2} = {:12.6}", i, energy);
+            }
+            
+            println!("\n✓ Semiclassical approximation (Σ₀ only)");
+            println!("✓ Closed classical trajectories (no cutoff needed)");
+            println!("\nNote: This uses WKB/semiclassical quantization.");
+            println!("Full Weyl quantization with quantum corrections (Σ₁, Σ₂, ...))");
+            println!("would improve accuracy but requires iterative procedure.");
             
             Ok(())
         }
