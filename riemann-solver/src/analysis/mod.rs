@@ -22,3 +22,4 @@ pub trait SpectrumAnalyzer {
 pub mod spacing;
 pub mod spectral;
 pub mod unfolding;
+pub mod ks_test;
