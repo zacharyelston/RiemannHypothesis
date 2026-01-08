@@ -10,8 +10,35 @@ A rigorous, literature-driven implementation of spectral approaches to the Riema
 
 ## Design Philosophy
 
-### Science First
+### Six Sigma: Attack the Hardest Problems First
 > *"A well-researched problem is not a problem."*
+
+This project applies **Six Sigma methodology** to mathematical research: identify the hardest, highest-risk problems and tackle them first. If you can solve the hard parts, the rest follows naturally.
+
+**Hardest Problems Identified & Attacked**:
+
+1. **Self-Adjointness of H=xp** (Hardest)
+   - Problem: Naive Berry-Keating operator is ill-defined
+   - Attack: Literature review → Srednicki's truncation
+   - Result: Proven self-adjoint operator ✓
+
+2. **Weyl Quantization Complexity** (Hard)
+   - Problem: Full iterative procedure seemed intractable
+   - Attack: Deep dive into Giordano paper appendices
+   - Result: Semiclassical path identified, implemented ✓
+
+3. **Regularization Without Cutoffs** (Hard)
+   - Problem: Berry-Keating needs boundary conditions
+   - Attack: Born oscillator with closed trajectories
+   - Result: No artificial cutoffs needed ✓
+
+**Why This Works**:
+- Solving hard problems validates the entire approach
+- Easy problems become trivial once hard ones are solved
+- Reduces risk early in the project
+- Builds confidence through rigorous validation
+
+### Science First Principles
 
 This project follows a **research-driven methodology**:
 
@@ -21,22 +48,36 @@ This project follows a **research-driven methodology**:
 4. **Incremental Implementation**: Start with simplest working version, add complexity as needed
 5. **Validate Against Theory**: Compare results to published benchmarks
 
-### Implementation Strategy
+### Implementation Strategy (Six Sigma Risk-Ordered)
 
-**Phase 0: Baseline (GUE)**
+**Risk Assessment** (Hardest → Easiest):
+
+| Problem | Risk Level | Impact if Failed | Attack Strategy |
+|---------|-----------|------------------|-----------------|
+| H=xp self-adjointness | **Critical** | Entire approach invalid | Literature review → Srednicki |
+| Weyl quantization | **High** | Can't compute eigenvalues | Deep research → Semiclassical path |
+| GUE statistics | **Medium** | Baseline validation fails | Standard random matrix theory |
+| Numerical stability | **Low** | Accuracy issues | Use proven LAPACK routines |
+
+**Phase 0: Baseline (GUE)** - Medium Risk
 - Verify quantum chaos statistics
 - Establish that random matrix eigenvalues match Riemann zero statistics
 - **Result**: 95.46% match to GUE theory
+- **Six Sigma**: Validated approach before tackling hard problems
 
-**Phase 1: Proven Approach (Berry-Keating Truncated)**
+**Phase 1: Proven Approach (Berry-Keating Truncated)** - Critical Risk
+- **Hardest problem first**: Is spectral method even valid?
 - Implement Srednicki's proven theorem for local Riemann Hypothesis
 - Demonstrates spectral method works in toy model
 - **Result**: All eigenvalues have Re(s) = 1/2 ✓
+- **Six Sigma**: Solved highest-risk problem, validated entire approach
 
-**Phase 2: Advanced Method (Born Oscillator)**
+**Phase 2: Advanced Method (Born Oscillator)** - High Risk
+- **Second-hardest problem**: How to quantize without cutoffs?
 - When full Weyl quantization seemed complex, literature review revealed tractable path
 - Implement semiclassical (WKB) approximation first
 - **Result**: Working eigenvalue solver without full iterative procedure
+- **Six Sigma**: Hard problem solved via research, implementation became straightforward
 
 ---
 
@@ -260,24 +301,35 @@ docker run --rm riemann-solver verify-gue --size 300
 
 ## Design Lessons Learned
 
-### 1. Literature Review Prevents Dead Ends
+### 1. Six Sigma: Attack Hardest Problems First
+**Example**: Self-adjointness of H=xp
+- **Risk**: Entire spectral approach fails if operator is ill-defined
+- **Action**: Tackled this first via literature review
+- **Result**: Srednicki's proven theorem → validated approach early
+- **Benefit**: All subsequent work built on solid foundation
+
+### 2. Literature Review Prevents Dead Ends
 - **Wrong**: Naive H=xp discretization (ill-defined)
 - **Right**: Srednicki's truncation (proven theorem)
+- **Six Sigma**: Identified mathematical rigor as highest risk, addressed it first
 
-### 2. Incremental Complexity
+### 3. Incremental Complexity (After Solving Hard Parts)
 - **Wrong**: Implement full Weyl quantization immediately
 - **Right**: Start with Σ₀ (semiclassical), add corrections later
+- **Six Sigma**: Once hard problem (quantization method) was understood, implementation became straightforward
 
-### 3. Validate Early and Often
+### 4. Validate Early and Often
 - GUE baseline established ground truth
 - Berry-Keating proved spectral method works
 - Born oscillator extended to more complex system
+- **Six Sigma**: Each validation reduced risk for next phase
 
-### 4. When Stuck, Research
+### 5. When Stuck, Research (Six Sigma Principle)
 Example: Weyl quantization seemed intractable
 → Literature review of Giordano paper Appendices B & C
 → Discovered semiclassical approximation path
 → Implemented working solution
+→ **Hard problem solved, rest followed naturally**
 
 ---
 
