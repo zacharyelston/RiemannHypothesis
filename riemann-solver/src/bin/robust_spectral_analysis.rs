@@ -29,7 +29,7 @@ struct Args {
     max_zeros: usize,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 struct SpacingDistribution {
     mean: f64,
     std: f64,
@@ -41,7 +41,7 @@ struct SpacingDistribution {
     brody_parameter: f64,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 struct PairCorrelation {
     s_values: Vec<f64>,
     r2_values: Vec<f64>,
@@ -51,7 +51,7 @@ struct PairCorrelation {
     peak_height: f64,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 struct FormFactor {
     frequencies: Vec<f64>,
     amplitudes: Vec<f64>,
@@ -351,7 +351,7 @@ fn analyze_form_factor(unfolded: &[f64], output_dir: &str) -> Result<FormFactor,
     let pair_corr = analyze_pair_correlation(unfolded, output_dir)?;
     
     // Compute FFT of R2(s) - 1 (deviation from unity)
-    let mut deviation: Vec<f64> = pair_corr.r2_values.iter()
+    let deviation: Vec<f64> = pair_corr.r2_values.iter()
         .map(|&r2| r2 - 1.0)
         .collect();
     
@@ -386,8 +386,8 @@ fn analyze_form_factor(unfolded: &[f64], output_dir: &str) -> Result<FormFactor,
     let spectral_rigidity = amplitudes.iter().sum::<f64>();
     
     let analysis = FormFactor {
-        frequencies,
-        amplitudes,
+        frequencies: frequencies.clone(),
+        amplitudes: amplitudes.clone(),
         step_function_height,
         oscillation_amplitude,
         spectral_rigidity,

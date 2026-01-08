@@ -1,0 +1,14 @@
+=== Spacing Distribution Analysis ===
+Total spacings: 49999
+Mean spacing: 1.000003
+Std deviation: 0.398838
+Min spacing: 0.040746
+Max spacing: 2.805237
+Skewness: 0.485279
+Kurtosis: 3.133422
+Wigner-Dyson deviation: 0.978338
+Brody parameter: 1.000000
+
+Interpretation:
+? Significant deviation from Wigner-Dyson
+✓ Consistent with GOE/GUE statistics

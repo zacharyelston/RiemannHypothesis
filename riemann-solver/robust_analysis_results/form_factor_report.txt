@@ -1,0 +1,19 @@
+=== Form Factor Analysis ===
+Step function height: 2.000000
+Oscillation amplitude: 0.123285
+Spectral rigidity: 2.695029
+
+Top 10 frequencies:
+  Freq: 0.0000, Amp: 0.215287
+  Freq: 0.0100, Amp: 0.546242
+  Freq: 0.0200, Amp: 0.194583
+  Freq: 0.0300, Amp: 0.152275
+  Freq: 0.0400, Amp: 0.090866
+  Freq: 0.0500, Amp: 0.077292
+  Freq: 0.0600, Amp: 0.053262
+  Freq: 0.0700, Amp: 0.042668
+  Freq: 0.0800, Amp: 0.032497
+  Freq: 0.0900, Amp: 0.023293
+
+Interpretation:
+? Significant oscillations detected

@@ -43,6 +43,10 @@ path = "src/bin/corrected_mechanism_investigation.rs"
 name = "unfold_test"
 path = "src/bin/unfolding_harness.rs"
 
+[[bin]]
+name = "robust_analysis"
+path = "src/bin/robust_spectral_analysis.rs"
+
 [dependencies]
 nalgebra = "0.32"        # Linear Algebra
 rand = "0.8"             # RNG
