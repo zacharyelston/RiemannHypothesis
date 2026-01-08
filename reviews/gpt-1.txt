@@ -1,0 +1,174 @@
+You’ve made the README *way* more defensible. It actually admits what it isn’t, cites concrete papers, and the architecture isn’t cosplay. Nice.
+
+Now for the part where I ruin your day with “next steps.” Here’s what you should focus on next, in the order that gives you the highest *research value per unit effort* (and keeps you from drifting into mystical-operator fanfic).
+
+---
+
+## 1) Add **Phase 4: Actual Riemann zeros** sooner than later (even minimal)
+
+Right now you’ve built three spectral toy/baseline systems, but you still haven’t run your own stats pipeline on real zeta zeros. That’s the one thing people will immediately ask for.
+
+### What to implement
+
+* Add a new `zeta-zeros` command:
+
+  * **Option A (fastest):** load Odlyzko tabulated zeros from a file (CSV/JSON).
+  * **Option B (compute):** use `mpmath` (via Python binding or external script) to compute the first N zeros, store them, reuse.
+* Implement **unfolding** properly:
+
+  * Use the Riemann-von Mangoldt counting function (N(T)) to map heights (\gamma_n) to unfolded levels with mean spacing ~1.
+* Run your existing `spacing` + (eventually) `spectral rigidity` analysis on the unfolded zeros.
+
+### Output you want
+
+* Histogram + KS statistic vs Wigner surmise (GUE)
+* Variance + confidence intervals
+* Optional: number variance (\Sigma^2(L)) and/or (\Delta_3(L))
+
+**Why this is #1:** It turns your project from “we reproduced known GUE facts” into “we reproduced the Montgomery–Odlyzko phenomenon with our own pipeline.”
+
+---
+
+## 2) Improve the **GUE validation** so it stops looking like a coincidence
+
+You now claim “95.46% match confidence.” That’s… not a standard metric. It invites attack.
+
+### What to do
+
+* Replace / supplement the “confidence” score with standard tests:
+
+  * KS distance to Wigner surmise CDF
+  * Anderson–Darling (optional)
+  * Chi-square on binned PDF (less ideal but common)
+* Report:
+
+  * N (matrix size)
+  * number of matrices
+  * number of spacings
+  * fraction trimmed from edges
+  * convergence plot vs matrix size
+
+### Why this matters
+
+It makes your GUE baseline solid enough that when you compare to zeta zeros later, you can say: “Same code path, same metrics.”
+
+---
+
+## 3) Born Oscillator Phase 2B: Implement the first **quantum correction Σ₁(E)** only
+
+Do **not** jump straight to (\hbar^{11}). That’s how humans end up writing a 900-line appendix no one reads and never finishing.
+
+### What to do
+
+* Implement Σ₁(E) exactly as in Giordano–Negro–Tateo.
+* Make a `--order` flag:
+
+  * `--order 0` = semiclassical only
+  * `--order 1` = include Σ₁(E)
+* Validate against the paper’s reported eigenvalues for the same λ, ℏ, truncation.
+
+### Deliverables
+
+* Plot: (E_n^{(0)}) vs (E_n^{(1)}) vs paper
+* Relative error vs n
+* Unit tests using “golden values” from the paper (tolerances)
+
+**Why this is next:** It upgrades the Born system from “works” to “quantitatively reproduces published benchmarks,” which is the whole point of your philosophy.
+
+---
+
+## 4) Add **spectral rigidity** metrics (number variance / Δ₃) in `analysis/spectral.rs`
+
+You already left a placeholder. Time to cash that check.
+
+### Implement
+
+* Number variance (\Sigma^2(L))
+* Dyson–Mehta (\Delta_3(L))
+
+Run it on:
+
+1. GUE
+2. Berry–Keating truncated spectrum
+3. Born oscillator spectrum
+4. (soon) unfolded Riemann zeros
+
+**Why it matters**
+Nearest-neighbor spacing is the entry drug. Rigidity is where the “zeta zeros are weirdly GUE-like” story becomes hard to deny.
+
+---
+
+## 5) Make Berry–Keating section more honest and more useful
+
+Srednicki’s truncation is good, but your claim “proves local RH” will get misread as “proves RH.” You already say “not a proof” elsewhere, but tighten the messaging.
+
+### Suggested improvements
+
+* Rename CLI and docs to emphasize:
+
+  * “Local RH in Srednicki truncation theorem”
+* Add a short “theorem scope” paragraph:
+
+  * what’s proven
+  * what’s not
+  * what limit would be needed for global RH and why it’s nontrivial
+
+Also: add the ability to compute **level spacing** of this truncated spectrum and compare to GUE. Not because it proves anything, but because it’s interesting and consistent with your “three systems” angle.
+
+---
+
+## 6) Build a single “comparison report” output format
+
+You’re going to generate a lot of results. Make them reproducible and comparable.
+
+### Add
+
+* `riemann-solver report --system gue --out results/gue.json`
+* Standard JSON schema:
+
+  * eigenvalues (optional)
+  * unfolded spacings
+  * variance
+  * KS statistic
+  * number variance curve
+  * parameters used (N, λ, ℏ, samples, seed)
+
+Then a tiny Python notebook or Rust plotting utility can generate the figures.
+
+**Why this matters**
+People don’t trust results they can’t rerun. Also humans forget what parameters they used three days ago, because humans are fragile.
+
+---
+
+## 7) Add the “parameter u” extension only after zeros + Σ₁ work
+
+Your Phase 3 “generalized Born oscillator” is cool, but it’s a multiplier of complexity. Do it after you’ve got:
+
+* real zeros analysis
+* Born oscillator corrections verified vs the paper
+
+Otherwise you’ll be juggling three moving targets with no anchor.
+
+---
+
+# If you do only three things next…
+
+1. **Implement `zeta-zeros` + unfolding + spacing tests**
+2. **Add spectral rigidity (Σ²(L), Δ₃(L))**
+3. **Implement Σ₁(E) for Born oscillator and validate against the paper**
+
+That sequence converts your project into a legitimate research platform instead of a cleanly written “random matrix vibes” demo.
+
+---
+
+## One quick README nit (because I’m obligated to be annoying)
+
+You say:
+
+> “Establish that random matrix eigenvalues match Riemann zero statistics”
+
+That’s backward. The Montgomery–Odlyzko phenomenon is: **Riemann zeros match GUE statistics**, not that GUE matrices match the zeros (GUE is the reference). Minor wording, but it matters.
+
+---
+
+That’s it. Go do the boring part (actual zeros + unfolding) so you can claim the exciting part without getting publicly set on fire.

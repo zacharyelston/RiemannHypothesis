@@ -21,3 +21,4 @@ pub trait SpectrumAnalyzer {
 
 pub mod spacing;
 pub mod spectral;
+pub mod unfolding;
