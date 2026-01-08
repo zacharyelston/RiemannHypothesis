@@ -22,4 +22,7 @@ pub trait SpectrumAnalyzer {
 pub mod spacing;
 pub mod spectral;
 pub mod unfolding;
+pub mod explicit_formula;
+pub mod primes;
+pub mod riemann_siegel;
 pub mod ks_test;

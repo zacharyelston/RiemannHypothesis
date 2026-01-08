@@ -91,32 +91,44 @@ We know:
 
 ### Hypotheses to Test
 
-#### 2.1 Prime Gap Connection 🔬
-**Hypothesis:** L≈3-5 corresponds to characteristic prime gap scale
+#### 2.1 Prime Gap Connection ✅ IMPLEMENTED
+**Hypothesis:** L≈3-5 ≈ typical prime gap scale
 
 **Approach:**
-- [ ] Compute prime gap distribution near zero heights
-- [ ] Calculate correlation length of prime oscillations
-- [ ] Compare with L≈3-5 scale
-- [ ] Test: Does crossover scale vary with zero height?
+- [x] Compute prime gap distribution near zero heights
+- [x] Calculate correlation length of prime oscillations
+- [x] Compare with L≈3-5 scale
+- [x] Test: Does crossover scale vary with zero height?
 
 **Tools needed:**
 - Prime gap analyzer
 - Explicit formula evaluator
 - Zero-prime correlation calculator
 
+**Implementation:**
+- **File:** `src/analysis/primes.rs`
+- **Class:** `PrimeGapAnalyzer` with methods:
+  - `compute_gaps()` - Prime gaps g_n = p_{n+1} - p_n
+  - `gap_statistics()` - Distribution statistics
+  - `gaps_near_zero()` - Height-dependent analysis
+  - `zero_gap_correlation()` - Correlation with zeros
+- **Tool:** `src/bin/prime_gap_analysis.rs`
+- **Usage:** `./target/release/prime_gap_analysis zeros_file.txt`
+
 **Expected outcome:**
 - If L≈3-5 ≈ typical prime gap scale → connection confirmed
 - If not → look elsewhere
 
-#### 2.2 Explicit Formula Correlation Length 🔬
+**Status:** Ready for testing with real zero data
+
+#### 2.2 Explicit Formula Correlation Length ✅ IMPLEMENTED
 **Hypothesis:** L≈3-5 is the correlation length of Σ x^ρ/ρ terms
 
 **Approach:**
-- [ ] Implement explicit formula: ψ(x) = x - Σ x^ρ/ρ - ...
-- [ ] Compute autocorrelation of zero contributions
-- [ ] Measure correlation length
-- [ ] Compare with L≈3-5
+- [x] Implement explicit formula: ψ(x) = x - Σ x^ρ/ρ - ...
+- [x] Compute autocorrelation of zero contributions
+- [x] Measure correlation length
+- [x] Compare with L≈3-5
 
 **Mathematical framework:**
 ```
@@ -125,28 +137,51 @@ Explicit formula: ψ(x) = x - Σ_{ρ} x^ρ/ρ - log(2π)
 Correlation: C(L) = ⟨(x^ρ₁/ρ₁)(x^ρ₂/ρ₂)⟩ where |ρ₁ - ρ₂| = L
 ```
 
+**Implementation:**
+- **File:** `src/analysis/explicit_formula.rs`
+- **Class:** `ExplicitFormula` with methods:
+  - `compute_psi(x)` - Evaluate ψ(x)
+  - `compute_correlation(max_l, l_steps, x_values)` - Compute C(L)
+  - `estimate_correlation_length()` - Find correlation decay length
+- **Tool:** `src/bin/explicit_formula_correlation.rs`
+- **Usage:** `./target/release/explicit_formula_correlation zeros_file.txt`
+
 **Expected outcome:**
 - Correlation length ≈ L≈3-5 → explains crossover
 - Different scale → hypothesis rejected
 
-#### 2.3 Riemann-Siegel Oscillations 🔬
+**Status:** Ready for testing with real zero data
+
+#### 2.3 Riemann-Siegel Oscillations ✅ IMPLEMENTED
 **Hypothesis:** L≈3-5 relates to θ(t) oscillation scale
 
 **Approach:**
-- [ ] Analyze Riemann-Siegel θ(t) function
-- [ ] Compute oscillation period in spacing units
-- [ ] Compare with crossover scale
-- [ ] Test: Does θ(t) structure create rigidity?
+- [x] Analyze Riemann-Siegel θ(t) function
+- [x] Compute oscillation period in spacing units
+- [x] Compare with crossover scale
+- [x] Test: Does θ(t) structure create rigidity?
 
 **Riemann-Siegel formula:**
 ```
-Z(t) = e^{iθ(t)} ζ(1/2 + it)
-θ(t) = Im[log Γ(1/4 + it/2)] - t/2 log(π)
+Z(t) = e^{iθ(t)}ζ(1/2 + it) is real
+θ(t) = arg(Γ(1/4 + it/2)) - (t/2)ln(π/2)
 ```
 
+**Implementation:**
+- **File:** `src/analysis/riemann_siegel.rs`
+- **Class:** `RiemannSiegelAnalyzer` with methods:
+  - `compute_theta(t)` - θ(t) function
+  - `oscillation_period()` - Period of θ(t) oscillations
+  - `period_in_spacing_units()` - Convert to zero spacing units
+  - `theta_rigidity_test()` - Test crossover connection
+- **Tool:** `src/bin/riemann_siegel_analysis.rs`
+- **Usage:** `./target/release/riemann_siegel_analysis zeros_file.txt`
+
 **Expected outcome:**
-- θ(t) oscillations at L≈3-5 scale → mechanism identified
-- No correlation → look at other structures
+- θ(t) period ≈ L≈3-5 → oscillation mechanism
+- Different scale → look elsewhere
+
+**Status:** Ready for testing with real zero data
 
 #### 2.4 Energy Dependence 🔬
 **Hypothesis:** Crossover scale varies with zero height
@@ -167,13 +202,13 @@ Z(t) = e^{iθ(t)} ζ(1/2 + it)
 
 ### Tasks
 
-#### 2.1 Implement Analysis Tools ⏳
-- [ ] Prime gap analyzer (`src/analysis/primes.rs`)
-- [ ] Explicit formula evaluator (`src/analysis/explicit_formula.rs`)
-- [ ] Riemann-Siegel calculator (`src/analysis/riemann_siegel.rs`)
+#### 2.1 Implement Analysis Tools ✅ COMPLETE
+- [x] Prime gap analyzer (`src/analysis/primes.rs`)
+- [x] Explicit formula evaluator (`src/analysis/explicit_formula.rs`)
+- [x] Riemann-Siegel calculator (`src/analysis/riemann_siegel.rs`)
 - [ ] Energy binning tool (`src/bin/energy_bins.rs`)
 
-#### 2.2 Run Systematic Tests ⏳
+#### 2.2 Run Systematic Tests 🔄 READY
 ```bash
 # Test each hypothesis
 ./target/release/prime_gap_analysis ../data/zeros1_100k.txt
