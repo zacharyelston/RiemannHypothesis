@@ -3,6 +3,18 @@ name = "riemann-solver"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "riemann_solver"
+path = "src/lib.rs"
+
+[[bin]]
+name = "riemann-solver"
+path = "src/main.rs"
+
+[[bin]]
+name = "rigidity_scan"
+path = "src/bin/rigidity_scan.rs"
+
 [dependencies]
 nalgebra = "0.32"        # Linear Algebra
 rand = "0.8"             # RNG
