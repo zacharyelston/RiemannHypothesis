@@ -3,7 +3,7 @@
 A rigorous, literature-driven implementation of spectral approaches to the Riemann Hypothesis, demonstrating the Hilbert-Pólya conjecture through three complementary quantum systems.
 
 [![Rust](https://img.shields.io/badge/rust-1.81-orange.svg)](https://www.rust-lang.org/)
-[![Tests](https://img.shields.io/badge/tests-13%2F13%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-24%2F24%20passing-brightgreen.svg)]()
 [![Docker](https://img.shields.io/badge/docker-ready-blue.svg)]()
 
 ---
@@ -15,14 +15,14 @@ A rigorous, literature-driven implementation of spectral approaches to the Riema
 riemann-solver verify-gue --size 300        # GUE baseline with KS test
 riemann-solver berry-keating --truncation 20 # Local RH (proven theorem)
 riemann-solver born-oscillator --lambda 1.0  # WKB quantization
-riemann-solver zeta-zeros [--count N]        # Actual Riemann zeros
+riemann-solver zeta-zeros [--count N]        # Validate against Odlyzko zeros
 ```
 
 **Key Results:**
 - ✓ Riemann zeros match GUE statistics (KS test p=0.051)
 - ✓ Spectral rigidity: Σ²(L) and Δ₃(L) demonstrate long-range correlations
-- ✓ Montgomery-Odlyzko phenomenon reproduced
-- ✓ 21/21 tests passing
+- ✓ Montgomery-Odlyzko phenomenon reproduced with 2.1M Odlyzko zeros
+- ✓ 24/24 tests passing
 
 ---
 
@@ -435,8 +435,8 @@ RiemannHypothesis/
 ## What This Project Is NOT
 
 ❌ **Not a proof** of the Riemann Hypothesis  
-❌ **Not computing actual** Riemann zeros (computes related spectral systems)  
-❌ **Not a complete** Weyl quantization (only Σ₀ for Born oscillator)  
+❌ **Not discovering new** Riemann zeros (validates against Odlyzko's known zeros)  
+❌ **Not a complete** Weyl quantization (implements Σ₀ + Σ₁ for Born oscillator)  
 
 ---
 
@@ -491,6 +491,6 @@ Special thanks to the authors of the foundational papers:
 
 **Status**: Production-ready research tool  
 **Branch**: `feature/baseline-corpus`  
-**Tests**: 13/13 passing ✓  
+**Tests**: 24/24 passing ✓  
 **Docker**: Builds successfully ✓  
 **Documentation**: Complete ✓
