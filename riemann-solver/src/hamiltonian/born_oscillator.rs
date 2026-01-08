@@ -61,30 +61,132 @@ impl BornOscillator {
         
         points
     }
+    
+    /// Compute semiclassical phase space volume Σ₀(E)
+    /// 
+    /// Σ₀(E) = (1/2π) ∫∫ dpdq Θ(E - H(p,q))
+    ///       = (2/π) ∫₀^{q_t(E)} dq [p(E,q) - p(0,q)]
+    /// 
+    /// For Born oscillator: p(E,q) = (1/√λ)√[(E²/(1+λq²)) - 1]
+    fn sigma_0(&self, energy: f64) -> f64 {
+        if energy <= 1.0 {
+            return 0.0; // Below ground state
+        }
+        
+        // Turning point: q_t where H(0,q_t) = E
+        // √1 · √(1+λq_t²) = E  =>  q_t = √((E²-1)/λ)
+        let q_turning = ((energy * energy - 1.0) / self.lambda).sqrt();
+        
+        // Numerical integration using Simpson's rule
+        let n_points = 1000;
+        let dq = q_turning / (n_points as f64);
+        let mut integral = 0.0;
+        
+        for i in 0..=n_points {
+            let q = (i as f64) * dq;
+            let weight = if i == 0 || i == n_points {
+                1.0
+            } else if i % 2 == 0 {
+                2.0
+            } else {
+                4.0
+            };
+            
+            // p(E,q) = (1/√λ)√[(E²/(1+λq²)) - 1]
+            let denom = 1.0 + self.lambda * q * q;
+            let p_squared = (energy * energy / denom - 1.0) / self.lambda;
+            
+            if p_squared >= 0.0 {
+                let p_e = p_squared.sqrt();
+                // p(0,q) = 0 (ground state)
+                let integrand = p_e;
+                integral += weight * integrand;
+            }
+        }
+        
+        integral *= dq / 3.0; // Simpson's rule factor
+        
+        // Σ₀ = (2/π) × integral
+        (2.0 / std::f64::consts::PI) * integral
+    }
+    
+    /// Solve semiclassical quantization condition: n + 1/2 = Σ₀(E)/ℏ
+    /// 
+    /// This is a nonlinear equation for E given n.
+    /// We use Newton's method to solve it.
+    fn solve_quantization(&self, n: usize, hbar: f64) -> Result<f64, RiemannError> {
+        let target = (n as f64 + 0.5) * hbar;
+        
+        // Initial guess: use harmonic oscillator-like spacing
+        let mut energy = 1.0 + (n as f64) * 0.5;
+        
+        // Newton's method
+        for _iter in 0..100 {
+            let sigma = self.sigma_0(energy);
+            let residual = sigma - target;
+            
+            if residual.abs() < 1e-10 {
+                return Ok(energy);
+            }
+            
+            // Numerical derivative
+            let deps = 1e-6;
+            let sigma_plus = self.sigma_0(energy + deps);
+            let derivative = (sigma_plus - sigma) / deps;
+            
+            if derivative.abs() < 1e-12 {
+                return Err(RiemannError::DiagonalizationError(
+                    "Newton's method failed: derivative too small".to_string()
+                ));
+            }
+            
+            energy -= residual / derivative;
+            
+            // Keep energy positive
+            if energy < 1.0 {
+                energy = 1.0 + 1e-6;
+            }
+        }
+        
+        Err(RiemannError::DiagonalizationError(
+            "Newton's method did not converge".to_string()
+        ))
+    }
+    
+    /// Compute eigenvalues using semiclassical (WKB) quantization
+    pub fn compute_eigenvalues_wkb(&self, hbar: f64) -> Result<Vec<f64>, RiemannError> {
+        let mut eigenvalues = Vec::with_capacity(self.truncation);
+        
+        for n in 0..self.truncation {
+            let energy = self.solve_quantization(n, hbar)?;
+            eigenvalues.push(energy);
+        }
+        
+        Ok(eigenvalues)
+    }
 }
 
 impl QuantumSystem for BornOscillator {
     fn generate_hamiltonian(&self) -> Result<DMatrix<Complex<f64>>, RiemannError> {
-        // For Born oscillator, we need Weyl quantization
-        // This is more complex than simple matrix elements
-        // 
-        // The paper uses an iterative procedure (Appendix C) to compute
-        // the quantization condition to high orders in ℏ
+        // For Born oscillator, we use semiclassical (WKB) quantization
+        // rather than direct matrix diagonalization
         //
-        // For now, implement a placeholder that will be filled with
-        // the Weyl quantization scheme
+        // The eigenvalues are computed from the quantization condition:
+        // n + 1/2 = Σ₀(E)/ℏ
+        //
+        // This is a diagonal representation in the energy eigenbasis
         
-        tracing::warn!("Born oscillator Weyl quantization not yet fully implemented");
-        tracing::info!("This requires implementing the iterative procedure from Appendix C");
+        tracing::info!("Computing Born oscillator eigenvalues via WKB quantization");
         
-        // Placeholder: return a simple matrix for now
-        // TODO: Implement full Weyl quantization
+        // Use ℏ = 1 for natural units
+        let hbar = 1.0;
+        let eigenvalues = self.compute_eigenvalues_wkb(hbar)?;
+        
+        // Return diagonal matrix with eigenvalues
         let n = self.truncation;
         let matrix = DMatrix::from_fn(n, n, |i, j| {
             if i == j {
-                // Diagonal approximation based on classical energy levels
-                let level = i as f64;
-                Complex::new(level, 0.0)
+                Complex::new(eigenvalues[i], 0.0)
             } else {
                 Complex::new(0.0, 0.0)
             }
@@ -135,5 +237,38 @@ mod tests {
         
         // Should be close for small λ
         assert!((h_exact - h_approx).abs() < 0.1);
+    }
+    
+    #[test]
+    fn test_sigma_0() {
+        let bo = BornOscillator::new(1.0, 10).unwrap();
+        
+        // At E=1 (ground state), Σ₀ should be 0
+        let sigma = bo.sigma_0(1.0);
+        assert!(sigma.abs() < 1e-6);
+        
+        // At higher energies, Σ₀ should increase
+        let sigma_2 = bo.sigma_0(2.0);
+        let sigma_3 = bo.sigma_0(3.0);
+        assert!(sigma_2 > 0.0);
+        assert!(sigma_3 > sigma_2);
+    }
+    
+    #[test]
+    fn test_wkb_quantization() {
+        let bo = BornOscillator::new(1.0, 5).unwrap();
+        let eigenvalues = bo.compute_eigenvalues_wkb(1.0).unwrap();
+        
+        // Should have 5 eigenvalues
+        assert_eq!(eigenvalues.len(), 5);
+        
+        // Eigenvalues should be increasing
+        for i in 1..eigenvalues.len() {
+            assert!(eigenvalues[i] > eigenvalues[i-1]);
+        }
+        
+        // Ground state should be close to 1 (classical minimum)
+        assert!(eigenvalues[0] >= 1.0);
+        assert!(eigenvalues[0] < 2.0);
     }
 }
