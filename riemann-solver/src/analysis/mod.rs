@@ -19,10 +19,12 @@ pub trait SpectrumAnalyzer {
     fn analyze(&self, unfolded_spectrum: &[f64]) -> SpectralStats;
 }
 
+pub mod ks_test;
 pub mod spacing;
 pub mod spectral;
 pub mod unfolding;
+pub mod unfolding_trait;
+pub mod spectral_fixed;
 pub mod explicit_formula;
 pub mod primes;
 pub mod riemann_siegel;
-pub mod ks_test;

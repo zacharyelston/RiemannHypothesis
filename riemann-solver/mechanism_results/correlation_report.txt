@@ -1,0 +1,9 @@
+=== Correlation Analysis Report ===
+Σ²(L) vs Δ₃(L) correlation: -0.238735
+Crossover L-value: 4.996000
+Maximum deviation at L: 4.996000
+Statistical significance: 2.252028
+
+Interpretation:
+  Moderate correlation between metrics
+  Crossover is moderately statistically significant

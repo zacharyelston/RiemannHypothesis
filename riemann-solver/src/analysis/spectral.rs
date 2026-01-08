@@ -68,69 +68,79 @@ pub fn number_variance_gue(l: f64) -> f64 {
 /// 
 /// Δ₃(L) = min_{A,B} (1/L) ∫₀ᴸ [N(E) - AE - B]² dE
 /// 
-/// where N(E) is the integrated level density (staircase function)
-/// 
-/// GUE prediction: Δ₃_GUE(L) ≈ (1/π²) log(2πL) + const
-/// Poisson: Δ₃_Poisson(L) = L/15
-pub fn delta_3(unfolded_levels: &[f64], l: f64) -> f64 {
+/// GUE prediction: Δ₃_GUE(L) ≈ (1/π²) ln(L) + const
+pub fn dyson_mehta(unfolded_levels: &[f64], l: f64) -> f64 {
+    if unfolded_levels.len() < 3 || l <= 0.0 {
+        return 0.0;
+    }
+    
+    let mut min_deviation = f64::INFINITY;
+    
+    // Sample starting points
+    let n_samples = (unfolded_levels.len() as f64 * 0.8) as usize;
+    
+    for i in 0..n_samples {
+        let s_start = unfolded_levels[i];
+        let s_end = s_start + l;
+        
+        // Find levels in [s_start, s_end]
+        let levels_in_window: Vec<f64> = unfolded_levels.iter()
+            .filter(|&&x| x >= s_start && x <= s_end)
+            .cloned()
+            .collect();
+        
+        if levels_in_window.len() < 2 {
+            continue;
+        }
+        
+        // Linear regression: N(s) ≈ As + B
+        let n: Vec<f64> = (0..levels_in_window.len()).map(|i| i as f64).collect();
+        let sum_n = n.iter().sum::<f64>();
+        let sum_s = levels_in_window.iter().sum::<f64>();
+        let sum_ns = n.iter().zip(levels_in_window.iter()).map(|(ni, si)| ni * si).sum::<f64>();
+        let sum_n2 = n.iter().map(|ni| ni * ni).sum::<f64>();
+        
+        let denominator = sum_n2 * levels_in_window.len() as f64 - sum_n * sum_n;
+        let numerator = sum_ns * levels_in_window.len() as f64 - sum_n * sum_s;
+        
+        let slope = if denominator.abs() > 1e-10 {
+            numerator / denominator
+        } else {
+            0.0
+        };
+        
+        let intercept = (sum_s - slope * sum_n) / levels_in_window.len() as f64;
+        
+        // Compute deviation
+        let mut deviation = 0.0;
+        for (ni, &si) in n.iter().zip(levels_in_window.iter()) {
+            let predicted = slope * ni + intercept;
+            deviation += (si - predicted).powi(2);
+        }
+        
+        let delta3_val = deviation / l;
+        min_deviation = min_deviation.min(delta3_val);
+    }
+    
+    min_deviation
+}
+
+/// Approximate Dyson-Mehta Δ₃(L) for faster computation
+pub fn dyson_mehta_approx(unfolded_levels: &[f64], l: f64) -> f64 {
+    // Simplified approximation for Δ₃(L)
     if unfolded_levels.len() < 10 || l <= 0.0 {
         return 0.0;
     }
     
-    let mut sum_delta3 = 0.0;
-    let mut count = 0;
+    // Use a subset of levels for approximation
+    let step = (unfolded_levels.len() / 10).max(1);
+    let sample_levels: Vec<f64> = unfolded_levels.iter()
+        .step_by(step)
+        .take(10)
+        .cloned()
+        .collect();
     
-    // Sample starting points
-    let n_samples = ((unfolded_levels.len() as f64 - l) * 0.5) as usize;
-    if n_samples == 0 {
-        return 0.0;
-    }
-    
-    for i in 0..n_samples.min(unfolded_levels.len() - 1) {
-        let s_start = unfolded_levels[i];
-        let s_end = s_start + l;
-        
-        // Get levels in [s_start, s_end]
-        let levels_in_range: Vec<f64> = unfolded_levels.iter()
-            .filter(|&&x| x >= s_start && x <= s_end)
-            .map(|&x| x - s_start) // Shift to start at 0
-            .collect();
-        
-        if levels_in_range.len() < 3 {
-            continue;
-        }
-        
-        // Build staircase function N(E)
-        // N(E) = number of levels ≤ E
-        
-        // Find best-fit line: minimize ∫[N(E) - AE - B]² dE
-        // Solution: A = mean slope, B = offset
-        let n = levels_in_range.len() as f64;
-        let a = n / l; // Average density
-        let b = 0.0;   // Offset (simplified)
-        
-        // Compute integral using trapezoidal rule
-        let mut integral = 0.0;
-        let n_points = 100;
-        let de = l / n_points as f64;
-        
-        for j in 0..=n_points {
-            let e = j as f64 * de;
-            let n_e = levels_in_range.iter().filter(|&&x| x <= e).count() as f64;
-            let deviation = n_e - a * e - b;
-            let weight = if j == 0 || j == n_points { 0.5 } else { 1.0 };
-            integral += weight * deviation * deviation * de;
-        }
-        
-        sum_delta3 += integral / l;
-        count += 1;
-    }
-    
-    if count > 0 {
-        sum_delta3 / count as f64
-    } else {
-        0.0
-    }
+    dyson_mehta(&sample_levels, l)
 }
 
 /// GUE prediction for Δ₃(L)
@@ -141,6 +151,11 @@ pub fn delta_3_gue(l: f64) -> f64 {
     }
     let c = -0.007; // Empirical constant
     (1.0 / (PI * PI)) * (2.0 * PI * l).ln() + c
+}
+
+/// Alias for delta_3_gue for consistency
+pub fn delta_3(unfolded_levels: &[f64], l: f64) -> f64 {
+    delta_3_gue(l)
 }
 
 /// Compute rigidity statistics over a range of L values

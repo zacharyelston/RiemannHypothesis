@@ -4,8 +4,11 @@ use std::f64::consts::PI;
 /// 
 /// N(T) = number of zeros with 0 < Im(ρ) ≤ T
 /// 
-/// Standard asymptotic formula (Riemann-von Mangoldt):
-/// N(T) = (T/2π) log(T/2π) - T/2π + 7/8 + S(T) + O(1/T)
+/// CORRECTED asymptotic formula (Riemann-von Mangoldt):
+/// N(T) = (T/2π) * log(T/(2π)) - T/(2π) + O(log T)
+/// 
+/// Previous incorrect formula: θ * log(θ) - θ + 7/8
+/// Correct formula: (T/2π) * log(T/(2π)) - T/(2π)
 /// 
 /// where S(T) is a small oscillating term we ignore for large T
 pub fn riemann_von_mangoldt(t: f64) -> f64 {
@@ -14,9 +17,10 @@ pub fn riemann_von_mangoldt(t: f64) -> f64 {
     }
     
     let two_pi = 2.0 * PI;
-    let theta = t / two_pi;
+    let t_over_2pi = t / two_pi;
     
-    theta * theta.ln() - theta + 7.0 / 8.0
+    // CORRECTED: Proper Riemann-von Mangoldt approximation
+    t_over_2pi * (t_over_2pi.ln() - 1.0)
 }
 
 /// Unfold a sequence of Riemann zeros to mean spacing = 1

@@ -1,0 +1,30 @@
+=== Prime Gap Analysis Report ===
+Total primes analyzed: 9592
+Gap statistics:
+  Mean: 10.425295
+  Std: 8.023648
+  Min: 1
+  Max: 72
+Crossover correlation: -0.040844
+
+Gap distribution (top 20):
+  Gap 1: 1 occurrences
+  Gap 2: 1224 occurrences
+  Gap 4: 1215 occurrences
+  Gap 6: 1940 occurrences
+  Gap 8: 773 occurrences
+  Gap 10: 916 occurrences
+  Gap 12: 964 occurrences
+  Gap 14: 484 occurrences
+  Gap 16: 339 occurrences
+  Gap 18: 514 occurrences
+  Gap 20: 238 occurrences
+  Gap 22: 223 occurrences
+  Gap 24: 206 occurrences
+  Gap 26: 88 occurrences
+  Gap 28: 98 occurrences
+  Gap 30: 146 occurrences
+  Gap 32: 32 occurrences
+  Gap 34: 33 occurrences
+  Gap 36: 54 occurrences
+  Gap 38: 19 occurrences

@@ -1,0 +1,39 @@
+=== Unfolding Validation Report ===
+Summary: ⚠️ MIXED RESULTS: 1 passed, 2 rejected
+
+--- Test Results ---
+
+Method: rvm
+Status: ✅ PASSED
+Mean spacing: 1.000003
+Spacing std: 0.398838
+Drift score: 0.000000
+Density flatness: 0.999818
+
+Method: theta
+Status: ❌ REJECTED
+Mean spacing: 0.556723
+Spacing std: 0.235123
+Drift score: 0.430662
+Density flatness: 0.864659
+Issues:
+  - Mean spacing 0.557 not close to 1.0
+  - High drift score 0.431
+
+Method: poly
+Status: ❌ REJECTED
+Mean spacing: 1.000000
+Spacing std: 42.165767
+Drift score: 0.203035
+Density flatness: 0.820970
+Issues:
+  - High drift score 0.203
+  - Local polynomial unfolding uses neighboring zeros
+
+--- Recommendations ---
+✅ ACCEPTED METHODS FOR RIGIDITY ANALYSIS:
+   - rvm
+
+❌ REJECTED METHODS:
+   - theta
+   - poly

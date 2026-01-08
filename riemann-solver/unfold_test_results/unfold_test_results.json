@@ -1,0 +1,45 @@
+{
+  "tests": [
+    {
+      "method": "rvm",
+      "passed": true,
+      "mean_spacing": 1.0000028798243823,
+      "spacing_std": 0.3988383246998235,
+      "drift_score": 5.464626789835849e-10,
+      "density_flatness": 0.9998183976295864,
+      "issues": []
+    },
+    {
+      "method": "theta",
+      "passed": false,
+      "mean_spacing": 0.556722612658681,
+      "spacing_std": 0.23512284719357046,
+      "drift_score": 0.43066243130800674,
+      "density_flatness": 0.8646585016233069,
+      "issues": [
+        "Mean spacing 0.557 not close to 1.0",
+        "High drift score 0.431"
+      ]
+    },
+    {
+      "method": "poly",
+      "passed": false,
+      "mean_spacing": 1.0,
+      "spacing_std": 42.16576747417363,
+      "drift_score": 0.20303527144679057,
+      "density_flatness": 0.8209701733398962,
+      "issues": [
+        "High drift score 0.203",
+        "Local polynomial unfolding uses neighboring zeros"
+      ]
+    }
+  ],
+  "accepted_methods": [
+    "rvm"
+  ],
+  "rejected_methods": [
+    "theta",
+    "poly"
+  ],
+  "summary": "⚠️ MIXED RESULTS: 1 passed, 2 rejected"
+}

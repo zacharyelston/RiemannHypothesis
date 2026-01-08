@@ -1,0 +1,10 @@
+=== Unfolding Stability Test Report ===
+Riemann-von Mangoldt L*: 3.790000
+Riemann-Siegel theta L*: 1.315000
+Polynomial fit L*: 1.095000
+Stability score: 0.401122
+
+Interpretation:
+❌ Low stability (unfolding artifact)
+
+L* range: 1.095 to 3.790 (Δ = 2.695)

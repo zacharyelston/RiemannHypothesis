@@ -1,0 +1,10 @@
+=== Residual Rigidity Analysis Report ===
+Crossover L-value: 3.790000
+Residual zero crossing: 3.790000
+Residual amplitude: 0.346084
+Universal component: 0.809649
+Arithmetic component: 0.271907
+
+Interpretation:
+? Crossover at L≈3.8 (different from expected)
+✓ Significant arithmetic correction detected

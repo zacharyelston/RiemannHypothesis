@@ -102,8 +102,41 @@ L≈3-5 crossover relates to θ(t) oscillation scale.
 
 ---
 
-## Next Steps
-1. Test all three hypotheses with real zero data
-2. Compare results to identify most promising mechanism
-3. Document findings in research log
-4. Update RESEARCH_PLANS.md with test results
+---
+
+## 2026-01-08: Hypothesis Testing Results
+
+### Test Data: 1000 Riemann zeros (zeros1_100k.txt)
+
+#### Plan 2.1: Prime Gap Analysis ✅ PROMISING
+**Results:**
+- Prime gap scale: 4.529 (in zero spacing units)
+- **✓ MATCH:** Within crossover range (3.0-5.0)
+- Zero-prime correlation: -0.130 (weak)
+- Height variation: Minimal (stable gaps)
+- **Assessment:** Prime gap scale matches crossover!
+
+#### Plan 2.2: Explicit Formula Correlation ❌ REJECTED
+**Results:**
+- Correlation length: 0.500
+- **✗ MISMATCH:** 6× shorter than crossover range
+- **Assessment:** Confirmed rejection - too fast correlation
+
+#### Plan 2.3: Riemann-Siegel Oscillations ❌ REJECTED (FIXED)
+**Results:**
+- θ(t) period: 0.848 (in zero spacing units)
+- **✗ MISMATCH:** Scale too short (3.6× shorter than crossover)
+- θ(t)-zero correlation: 0.997 (strong but irrelevant)
+- Height consistency: Poor (varies significantly)
+- **Assessment:** Fixed implementation confirms rejection - scale mismatch
+
+### Key Finding: Prime Gap Connection
+**The L≈3-5 crossover scale matches the prime gap scale!**
+
+This suggests the crossover may be related to the arithmetic structure of prime numbers rather than quantum mechanical oscillations.
+
+### Next Steps
+1. ✅ Fix Riemann-Siegel period computation (COMPLETED)
+2. Test with larger zero datasets
+3. Investigate prime gap mechanism more deeply
+4. Document findings in RESEARCH_PLANS.md

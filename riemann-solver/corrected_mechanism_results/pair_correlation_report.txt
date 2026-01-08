@@ -1,0 +1,20 @@
+=== Pair Correlation Analysis Report ===
+Sine kernel deviation: 0.247433
+Correction term amplitude: 0.247433
+Crossover correlation: 0.247433
+
+Form factor structure (top 10):
+  Freq: 0.0000, Amplitude: 11.730975
+  Freq: 0.0100, Amplitude: 51.452018
+  Freq: 0.0200, Amplitude: 21.830674
+  Freq: 0.0300, Amplitude: 14.533717
+  Freq: 0.0400, Amplitude: 12.573744
+  Freq: 0.0500, Amplitude: 7.151330
+  Freq: 0.0600, Amplitude: 7.998952
+  Freq: 0.0700, Amplitude: 2.075118
+  Freq: 0.0800, Amplitude: 5.386644
+  Freq: 0.0900, Amplitude: 1.425264
+
+Interpretation:
+✓ Significant deviation from sine kernel
+✓ Arithmetic corrections detected

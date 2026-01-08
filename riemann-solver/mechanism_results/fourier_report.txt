@@ -1,0 +1,22 @@
+=== Fourier Analysis Report ===
+Total spacings analyzed: 49999
+Crossover frequency: 0.249750
+
+Dominant frequencies (top 10):
+  1. 0.000000
+  2. 0.485990
+  3. 0.483150
+  4. 0.461789
+  5. 0.461269
+  6. 0.457929
+  7. 0.357867
+  8. 0.408388
+  9. 0.471029
+  10. 0.459509
+
+Periodic components (top 5):
+  Freq: 0.000000, Amplitude: 49999.287977
+  Freq: 0.485990, Amplitude: 1.915704
+  Freq: 0.483150, Amplitude: 1.913233
+  Freq: 0.461789, Amplitude: 1.912281
+  Freq: 0.461269, Amplitude: 1.786328
