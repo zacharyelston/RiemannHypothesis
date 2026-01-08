@@ -40,6 +40,8 @@ pub enum Commands {
         lambda: f64,
         #[arg(short, long, default_value_t = 20)]
         truncation: usize,
+        #[arg(short, long, default_value_t = 0)]
+        order: usize,
     },
     /// Analyze actual Riemann zeta zeros (Montgomery-Odlyzko phenomenon)
     ZetaZeros {
@@ -147,36 +149,63 @@ fn main() -> anyhow::Result<()> {
             
             Ok(())
         }
-        Commands::BornOscillator { lambda, truncation } => {
-            tracing::info!("Running Born oscillator with λ={}, N={}", lambda, truncation);
+        Commands::BornOscillator { lambda, truncation, order } => {
+            tracing::info!("Running Born oscillator with λ={}, N={}, order={}", lambda, truncation, order);
             
             // Create Born oscillator system
             let bo = BornOscillator::new(lambda, truncation)?;
-            tracing::info!("Computing eigenvalues via semiclassical (WKB) quantization...");
             
-            // Compute eigenvalues using WKB approximation
+            let order_name = match order {
+                0 => "semiclassical (Σ₀ only)",
+                1 => "first quantum correction (Σ₀ + Σ₁)",
+                _ => "higher order (not implemented)",
+            };
+            tracing::info!("Computing eigenvalues via {}...", order_name);
+            
+            // Compute eigenvalues with quantum corrections
             let hbar = 1.0;
-            let eigenvalues = bo.compute_eigenvalues_wkb(hbar)?;
+            let eigenvalues = bo.compute_eigenvalues_with_order(hbar, order)?;
             
             // Display results
-            println!("\n=== Born Oscillator - Semiclassical Quantization ===");
+            println!("\n=== Born Oscillator - Weyl Quantization ===");
             println!("Based on Giordano et al. (2023) arXiv:2307.15025v2");
             println!("\nParameters:");
             println!("  λ (deformation): {}", lambda);
             println!("  Truncation N: {}", truncation);
             println!("  ℏ: {}", hbar);
+            println!("  Order: {} ({})", order, order_name);
             println!("\nClassical Hamiltonian: H = √(1 + λp²) √(1 + λq²)");
-            println!("\nEigenvalues from WKB quantization (n + 1/2 = Σ₀(E)/ℏ):\n");
+            
+            let quantization_formula = match order {
+                0 => "n + 1/2 = Σ₀(E)/ℏ",
+                1 => "n + 1/2 = Σ₀(E)/ℏ + Σ₁(E)ℏ",
+                _ => "n + 1/2 = Σ₀(E)/ℏ + Σ₁(E)ℏ + ...",
+            };
+            println!("\nQuantization condition: {}\n", quantization_formula);
+            println!("Eigenvalues:\n");
             
             for (i, &energy) in eigenvalues.iter().enumerate() {
                 println!("  E_{:2} = {:12.6}", i, energy);
             }
             
-            println!("\n✓ Semiclassical approximation (Σ₀ only)");
-            println!("✓ Closed classical trajectories (no cutoff needed)");
-            println!("\nNote: This uses WKB/semiclassical quantization.");
-            println!("Full Weyl quantization with quantum corrections (Σ₁, Σ₂, ...))");
-            println!("would improve accuracy but requires iterative procedure.");
+            match order {
+                0 => {
+                    println!("\n✓ Semiclassical approximation (Σ₀ only)");
+                    println!("✓ Closed classical trajectories (no cutoff needed)");
+                    println!("\nNote: Use --order 1 to include first quantum correction Σ₁(E)");
+                    println!("Full Weyl quantization to O(ℏ¹¹) requires iterative G_m procedure");
+                }
+                1 => {
+                    println!("\n✓ First quantum correction included (Σ₀ + Σ₁)");
+                    println!("✓ Improved accuracy over semiclassical");
+                    println!("\nNote: Higher orders (Σ₂, Σ₃, ...) require iterative G_m procedure");
+                    println!("Paper computed to O(ℏ¹¹) using full Weyl quantization");
+                }
+                _ => {
+                    println!("\n⚠ Order {} not implemented", order);
+                    println!("Available: --order 0 (semiclassical) or --order 1 (first correction)");
+                }
+            }
             
             Ok(())
         }

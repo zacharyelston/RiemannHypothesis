@@ -62,6 +62,59 @@ impl BornOscillator {
         points
     }
     
+    /// Compute first quantum correction Σ₁(E)
+    /// 
+    /// Simplified formula from Weyl quantization:
+    /// Σ₁(E) ≈ (1/24π) ∫₀^{q_t} dq [∂²H/∂p² + ∂²H/∂q²]
+    /// 
+    /// For Born oscillator H = √(1+λp²)√(1+λq²):
+    /// ∂²H/∂p² = λ√(1+λq²) / (1+λp²)^(3/2)
+    /// ∂²H/∂q² = λ√(1+λp²) / (1+λq²)^(3/2)
+    fn sigma_1(&self, energy: f64) -> f64 {
+        if energy <= 1.0 {
+            return 0.0;
+        }
+        
+        let q_turning = ((energy * energy - 1.0) / self.lambda).sqrt();
+        
+        // Numerical integration
+        let n_points = 1000;
+        let dq = q_turning / (n_points as f64);
+        let mut integral = 0.0;
+        
+        for i in 0..=n_points {
+            let q = (i as f64) * dq;
+            let weight = if i == 0 || i == n_points {
+                1.0
+            } else if i % 2 == 0 {
+                2.0
+            } else {
+                4.0
+            };
+            
+            // Momentum on trajectory
+            let denom_q = 1.0 + self.lambda * q * q;
+            let p_squared = (energy * energy / denom_q - 1.0) / self.lambda;
+            
+            if p_squared >= 0.0 {
+                let p = p_squared.sqrt();
+                let denom_p = 1.0 + self.lambda * p * p;
+                
+                // Second derivatives
+                let d2h_dp2 = self.lambda * denom_q.sqrt() / denom_p.powf(1.5);
+                let d2h_dq2 = self.lambda * denom_p.sqrt() / denom_q.powf(1.5);
+                
+                let integrand = d2h_dp2 + d2h_dq2;
+                integral += weight * integrand;
+            }
+        }
+        
+        integral *= dq / 3.0; // Simpson's rule
+        
+        // Σ₁ = (1/24π) × integral
+        integral / (24.0 * std::f64::consts::PI)
+    }
+    
     /// Compute semiclassical phase space volume Σ₀(E)
     /// 
     /// Σ₀(E) = (1/2π) ∫∫ dpdq Θ(E - H(p,q))
@@ -110,29 +163,37 @@ impl BornOscillator {
         (2.0 / std::f64::consts::PI) * integral
     }
     
-    /// Solve semiclassical quantization condition: n + 1/2 = Σ₀(E)/ℏ
+    /// Solve quantization condition with quantum corrections
     /// 
-    /// This is a nonlinear equation for E given n.
-    /// We use Newton's method to solve it.
-    fn solve_quantization(&self, n: usize, hbar: f64) -> Result<f64, RiemannError> {
-        let target = (n as f64 + 0.5) * hbar;
+    /// n + 1/2 = Σ₀(E)/ℏ + Σ₁(E)ℏ + ...
+    /// 
+    /// order = 0: Semiclassical (Σ₀ only)
+    /// order = 1: First quantum correction (Σ₀ + Σ₁)
+    fn solve_quantization_order(&self, n: usize, hbar: f64, order: usize) -> Result<f64, RiemannError> {
+        let target = n as f64 + 0.5;
         
         // Initial guess: use harmonic oscillator-like spacing
         let mut energy = 1.0 + (n as f64) * 0.5;
         
         // Newton's method
         for _iter in 0..100 {
-            let sigma = self.sigma_0(energy);
-            let residual = sigma - target;
+            let sigma0 = self.sigma_0(energy);
+            let sigma1 = if order >= 1 { self.sigma_1(energy) } else { 0.0 };
+            
+            // RHS = Σ₀(E)/ℏ + Σ₁(E)ℏ
+            let rhs = sigma0 / hbar + sigma1 * hbar;
+            let residual = rhs - target;
             
             if residual.abs() < 1e-10 {
                 return Ok(energy);
             }
             
-            // Numerical derivative
+            // Numerical derivative of RHS
             let deps = 1e-6;
-            let sigma_plus = self.sigma_0(energy + deps);
-            let derivative = (sigma_plus - sigma) / deps;
+            let sigma0_plus = self.sigma_0(energy + deps);
+            let sigma1_plus = if order >= 1 { self.sigma_1(energy + deps) } else { 0.0 };
+            let rhs_plus = sigma0_plus / hbar + sigma1_plus * hbar;
+            let derivative = (rhs_plus - rhs) / deps;
             
             if derivative.abs() < 1e-12 {
                 return Err(RiemannError::DiagonalizationError(
@@ -153,12 +214,25 @@ impl BornOscillator {
         ))
     }
     
-    /// Compute eigenvalues using semiclassical (WKB) quantization
+    /// Solve semiclassical quantization (backward compatible)
+    fn solve_quantization(&self, n: usize, hbar: f64) -> Result<f64, RiemannError> {
+        self.solve_quantization_order(n, hbar, 0)
+    }
+    
+    /// Compute eigenvalues using WKB quantization
     pub fn compute_eigenvalues_wkb(&self, hbar: f64) -> Result<Vec<f64>, RiemannError> {
+        self.compute_eigenvalues_with_order(hbar, 0)
+    }
+    
+    /// Compute eigenvalues with quantum corrections
+    /// 
+    /// order = 0: Semiclassical (Σ₀ only)
+    /// order = 1: First quantum correction (Σ₀ + Σ₁)
+    pub fn compute_eigenvalues_with_order(&self, hbar: f64, order: usize) -> Result<Vec<f64>, RiemannError> {
         let mut eigenvalues = Vec::with_capacity(self.truncation);
         
         for n in 0..self.truncation {
-            let energy = self.solve_quantization(n, hbar)?;
+            let energy = self.solve_quantization_order(n, hbar, order)?;
             eigenvalues.push(energy);
         }
         
