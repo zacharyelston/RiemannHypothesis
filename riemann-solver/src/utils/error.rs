@@ -9,4 +9,6 @@ pub enum RiemannError {
     DiagonalizationError(String),
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
+    #[error("Serialization error: {0}")]
+    SerializationError(String),
 }

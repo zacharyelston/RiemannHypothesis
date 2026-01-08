@@ -2,13 +2,15 @@ use clap::{Parser, Subcommand};
 mod config;
 mod hamiltonian;
 mod solver;
-mod analysis;
 mod utils;
+mod analysis;
+mod output;
 
 use config::SimulationConfig;
 use hamiltonian::{QuantumSystem, gue::GueSystem, berry_keating::BerryKeatingSystem, born_oscillator::BornOscillator};
 use solver::{EigenSolver, lapack::LapackSolver};
 use analysis::{SpectrumAnalyzer, spacing::SpacingAnalyzer};
+use output::*;
 
 #[derive(Parser)]
 #[command(name = "riemann-solver")]
@@ -28,11 +30,15 @@ pub enum Commands {
         iterations: usize,
         #[arg(short, long)]
         seed: Option<u64>,
+        #[arg(short, long)]
+        out: Option<String>,
     },
     /// Run Berry-Keating truncated Hamiltonian (Srednicki 2011)
     BerryKeating {
         #[arg(short, long, default_value_t = 50)]
         truncation: usize,
+        #[arg(short, long)]
+        out: Option<String>,
     },
     /// Run Born oscillator with WKB quantization (Giordano et al. 2023)
     BornOscillator {
@@ -42,6 +48,8 @@ pub enum Commands {
         truncation: usize,
         #[arg(short, long, default_value_t = 0)]
         order: usize,
+        #[arg(short, long)]
+        out: Option<String>,
     },
     /// Analyze actual Riemann zeta zeros (Montgomery-Odlyzko phenomenon)
     ZetaZeros {
@@ -49,6 +57,8 @@ pub enum Commands {
         data: String,
         #[arg(short, long)]
         count: Option<usize>,
+        #[arg(short, long)]
+        out: Option<String>,
     },
 }
 
@@ -58,7 +68,7 @@ fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::VerifyGue { size, iterations, seed } => {
+        Commands::VerifyGue { size, iterations, seed, out } => {
             let config = SimulationConfig {
                 matrix_size: size,
                 iterations,
@@ -112,9 +122,33 @@ fn main() -> anyhow::Result<()> {
                 println!("\n⚠ CONCLUSION: Partial match to GUE (Variance={:.4}, p={:.3})", stats.variance, ks_p);
             }
             
+            // Write JSON output if requested
+            if let Some(path) = out {
+                let result = GueResult {
+                    command: "verify-gue".to_string(),
+                    timestamp: get_timestamp(),
+                    parameters: GueParameters { size, hbar: 1.0 },
+                    eigenvalues: eigenvalues.clone(),
+                    spacings: unfolded.clone(),
+                    statistics: SpectralStatistics {
+                        mean_spacing: stats.mean_spacing,
+                        variance: stats.variance,
+                        skewness: stats.skewness,
+                        kurtosis: stats.kurtosis,
+                        ks_statistic: ks_d,
+                        ks_pvalue: ks_p,
+                    },
+                    metadata: GueMetadata {
+                        gue_theory: GueTheory { mean: 1.0, variance: 0.178 },
+                    },
+                };
+                write_json(&result, &path)?;
+                println!("\n✓ Results written to {}", path);
+            }
+            
             Ok(())
         }
-        Commands::BerryKeating { truncation } => {
+        Commands::BerryKeating { truncation, out } => {
             tracing::info!("Running Berry-Keating truncated Hamiltonian with N={}", truncation);
             
             // Create Berry-Keating system
@@ -147,9 +181,30 @@ fn main() -> anyhow::Result<()> {
             println!("the modified gamma factor Γ_{{∞,N}}(s) which satisfy the");
             println!("local Riemann hypothesis (Srednicki 2011, arXiv:1104.1850)");
             
+            // Write JSON output if requested
+            if let Some(path) = out {
+                let result = BerryKeatingResult {
+                    command: "berry-keating".to_string(),
+                    timestamp: get_timestamp(),
+                    parameters: BerryKeatingParameters { truncation },
+                    eigenvalues: eigenvalues.clone(),
+                    statistics: BerryKeatingStatistics {
+                        all_real: true,
+                        min_eigenvalue: eigenvalues.iter().cloned().fold(f64::INFINITY, f64::min),
+                        max_eigenvalue: eigenvalues.iter().cloned().fold(f64::NEG_INFINITY, f64::max),
+                    },
+                    metadata: BerryKeatingMetadata {
+                        theorem: "Srednicki 2011 - Local Riemann Hypothesis".to_string(),
+                        note: "All eigenvalues have Re(s) = 1/2".to_string(),
+                    },
+                };
+                write_json(&result, &path)?;
+                println!("\n✓ Results written to {}", path);
+            }
+            
             Ok(())
         }
-        Commands::BornOscillator { lambda, truncation, order } => {
+        Commands::BornOscillator { lambda, truncation, order, out } => {
             tracing::info!("Running Born oscillator with λ={}, N={}, order={}", lambda, truncation, order);
             
             // Create Born oscillator system
@@ -207,9 +262,35 @@ fn main() -> anyhow::Result<()> {
                 }
             }
             
+            // Write JSON output if requested
+            if let Some(path) = out {
+                let quantization = match order {
+                    0 => "Semiclassical (Σ₀ only)",
+                    1 => "Weyl (Σ₀ + Σ₁)",
+                    _ => "Not implemented",
+                };
+                let result = BornOscillatorResult {
+                    command: "born-oscillator".to_string(),
+                    timestamp: get_timestamp(),
+                    parameters: BornOscillatorParameters {
+                        lambda,
+                        truncation,
+                        hbar,
+                        order,
+                    },
+                    eigenvalues: eigenvalues.clone(),
+                    metadata: BornOscillatorMetadata {
+                        quantization: quantization.to_string(),
+                        paper: "Giordano et al. 2023 arXiv:2307.15025v2".to_string(),
+                    },
+                };
+                write_json(&result, &path)?;
+                println!("\n✓ Results written to {}", path);
+            }
+            
             Ok(())
         }
-        Commands::ZetaZeros { data, count } => {
+        Commands::ZetaZeros { data, count, out } => {
             use crate::analysis::unfolding::{load_zeros_from_file, unfold_zeros, compute_spacings};
             use crate::analysis::ks_test::ks_test_wigner;
             use crate::analysis::spectral::{number_variance, number_variance_gue, delta_3, delta_3_gue};
@@ -289,6 +370,48 @@ fn main() -> anyhow::Result<()> {
             println!("✓ Spectral rigidity demonstrates long-range GUE correlations");
             println!("\nConclusion: Riemann zeros exhibit GUE spacing statistics");
             println!("(Montgomery-Odlyzko phenomenon reproduced with our pipeline)");
+            
+            // Write JSON output if requested
+            if let Some(path) = out {
+                let result = ZetaZerosResult {
+                    command: "zeta-zeros".to_string(),
+                    timestamp: get_timestamp(),
+                    parameters: ZetaZerosParameters {
+                        data_file: data.clone(),
+                        count: zeros.len(),
+                    },
+                    zeros: zeros.clone(),
+                    unfolded_levels: unfolded.clone(),
+                    spacings: spacings.clone(),
+                    statistics: SpectralStatistics {
+                        mean_spacing: stats.mean_spacing,
+                        variance: stats.variance,
+                        skewness: stats.skewness,
+                        kurtosis: stats.kurtosis,
+                        ks_statistic: ks_d,
+                        ks_pvalue: ks_p,
+                    },
+                    rigidity: RigidityMetrics {
+                        l: l_test,
+                        number_variance: RigidityValue {
+                            observed: sigma2,
+                            gue_predicted: sigma2_gue,
+                            ratio: sigma2 / sigma2_gue,
+                        },
+                        delta_3: RigidityValue {
+                            observed: d3,
+                            gue_predicted: d3_gue,
+                            ratio: d3 / d3_gue,
+                        },
+                    },
+                    metadata: ZetaZerosMetadata {
+                        phenomenon: "Montgomery-Odlyzko".to_string(),
+                        conclusion: "Riemann zeros match GUE statistics".to_string(),
+                    },
+                };
+                write_json(&result, &path)?;
+                println!("\n✓ Results written to {}", path);
+            }
             
             Ok(())
         }

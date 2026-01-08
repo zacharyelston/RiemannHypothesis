@@ -10,6 +10,8 @@ rand_distr = "0.4"       # Distributions (Normal, etc.)
 statrs = "0.16"          # Stats helpers
 clap = { version = "4.4", features = ["derive"] } # CLI
 serde = { version = "1.0", features = ["derive"] } # Config
+serde_json = "1.0"       # JSON serialization
+chrono = { version = "0.4", features = ["serde"] } # Timestamps
 thiserror = "1.0"        # Error defining
 anyhow = "1.0"           # Error handling
 tracing = "0.1"          # Logging
